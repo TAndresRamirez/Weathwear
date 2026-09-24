@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/cupertino.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
@@ -100,26 +101,14 @@ class SqliteHelper {
       _database = null;
     }
   }
+
+  @visibleForTesting
+  static void setTestDatabase(Database db) {
+    _database = db;
+  }
+
+  @visibleForTesting
+  static void resetForTest() {
+    _database = null;
+  }
 }
-
-// import 'package:path/path.dart';
-// import 'package:sqflite/sqflite.dart';
-
-// class SqliteHelper {
-//   Future<Database> getDB () async {
-//     String databasesPath = await getDatabasesPath();
-//     String path =join(databasesPath, 'database_sqlite.db');
-
-//     //Abre o crea la base de datos
-//     return await openDatabase(
-//       path,
-//       version: 1,
-//       onCreate: _onCreate,
-//     );
-//   }
-
-//   //Metodo para crear las tablas
-//   void _onCreate(Database db, int version) async {
-//     await db.execute()
-//   }
-// }
