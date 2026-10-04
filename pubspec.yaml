@@ -41,6 +41,8 @@ dependencies:
   workmanager: ^0.10.10
   tflite_flutter: ^0.12.1
   path: ^1.9.1
+  image: ^4.10.1
+  image_picker: ^1.2.3
 
 dev_dependencies:
   flutter_test:
@@ -59,6 +61,9 @@ dev_dependencies:
 
 # The following section is specific to Flutter packages.
 flutter:
+  assets:
+    - assets/models/clothing_model.tflite
+    - assets/models/labels.txt
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
   # the material Icons class.

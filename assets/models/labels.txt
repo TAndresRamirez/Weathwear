@@ -1,0 +1,5 @@
+0 Polera
+1 Poleron
+2 Chaqueta
+3 Pantalon
+4 Shorts
