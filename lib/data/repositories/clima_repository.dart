@@ -5,8 +5,8 @@ class ClimaRepository {
   final SqliteHelper _dbHelper;
 
   // Recibe la instancia por parametro para inyectar un SqliteHelper de prueba en los tests de integracion
-  ClimaRepository({SqliteHelper? dbHellper})
-    : _dbHelper = dbHellper ?? SqliteHelper.instance;
+  ClimaRepository({SqliteHelper? dbHelper})
+    : _dbHelper = dbHelper ?? SqliteHelper.instance;
 
   Future<int> insert(ClimaModel clima) async {
     final db = await _dbHelper.database;

@@ -19,7 +19,7 @@ void callbackDispatcher() {
     final pipeline = EtlPipeline(
       ClimaApiClient(),
       ClimaTransformer(),
-      ClimaRepository(dbHellper: SqliteHelper.instance),
+      ClimaRepository(dbHelper: SqliteHelper.instance),
     );
 
     final result = await pipeline.run();

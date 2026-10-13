@@ -43,6 +43,7 @@ class ClothingClassifier {
           .split('\n')
           .map((l) => l.trim())
           .where((l) => l.isNotEmpty)
+          .map((l) => l.replaceFirst(RegExp(r'^\d+\s+'), ''))
           .toList();
     } catch (e) {
       throw ClassifierException(
@@ -92,7 +93,7 @@ class ClothingClassifier {
       List.generate(_inputSize, (y) {
         return List.generate(_inputSize, (x) {
           final p = resized.getPixel(x, y);
-          return [(p.r / 127.5) - 1, (p.g / 127.5) - 1, (p.g / 127.5) - 1];
+          return [(p.r / 127.5) - 1, (p.g / 127.5) - 1, (p.b / 127.5) - 1];
         });
       }),
     ];

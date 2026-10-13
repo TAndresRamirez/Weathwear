@@ -64,7 +64,7 @@ void main() {
     final pipeline = EtlPipeline(
       fakeClient,
       ClimaTransformer(),
-      ClimaRepository(dbHellper: SqliteHelper.instance),
+      ClimaRepository(dbHelper: SqliteHelper.instance),
     );
 
     final result = await pipeline.run();
@@ -85,7 +85,7 @@ void main() {
       final pipeline = EtlPipeline(
         fakeClient,
         ClimaTransformer(),
-        ClimaRepository(dbHellper: SqliteHelper.instance),
+        ClimaRepository(dbHelper: SqliteHelper.instance),
       );
 
       final result = await pipeline.run();

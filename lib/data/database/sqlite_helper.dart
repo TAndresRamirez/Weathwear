@@ -9,7 +9,7 @@ import 'package:sqflite/sqflite.dart';
 // Punto unico de acceso a la base de datos local del sistema
 class SqliteHelper {
   static const String _dbName = 'weathwear.db';
-  static const int _dbVersion = 1;
+  static const int _dbVersion = 2;
 
   //Singleton: una sola instancia de esta clase en toda la app
   SqliteHelper._internal();
@@ -33,6 +33,7 @@ class SqliteHelper {
       version: _dbVersion,
       onConfigure: _onConfigure,
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
     );
   }
 
@@ -62,6 +63,7 @@ class SqliteHelper {
         temp_min            REAL NOT NULL,
         temp_max            REAL NOT NULL,
         condicion_aplicable TEXT NOT NULL,
+        activa              INTEGER NOT NULL DEFAULT 1
         CHECK (temp_min <= temp_max)
       )
     ''');
@@ -110,5 +112,14 @@ class SqliteHelper {
   @visibleForTesting
   static void resetForTest() {
     _database = null;
+  }
+
+  // Migra instalaciones existentes
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute(
+        'ALTER TABLE Prenda ADD COLUM activa INTEGER NOT NULL DEFAULT 1',
+      );
+    }
   }
 }
