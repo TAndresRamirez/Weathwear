@@ -92,8 +92,8 @@ void main() {
       () => build().registrar(
         sourcePath: '/cache/x.jpg',
         tipo: 'Polera',
-        tempMin: 15,
-        tempMax: 25,
+        tempMin: 25,
+        tempMax: 10,
         condicionAplicable: 'soleado',
       ),
       throwsA(isA<PrendaRegistroException>()),
