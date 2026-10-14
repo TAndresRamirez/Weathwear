@@ -12,4 +12,10 @@ class ClimaRepository {
     final db = await _dbHelper.database;
     return db.insert('Clima', clima.toMap());
   }
+
+  Future<ClimaModel?> getUltimo() async {
+    final db = await _dbHelper.database;
+    final rows = await db.query('Clima', orderBy: 'fecha_hora DESC', limit: 1);
+    return rows.isEmpty ? null : ClimaModel.fromMap(rows.first);
+  }
 }
