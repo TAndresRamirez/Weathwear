@@ -1,3 +1,4 @@
+// ignore_for_file: avoid_print
 //temporal, validacion api Open-Meteo
 import 'package:weathwear/data/api/clima_api_client.dart';
 import 'package:weathwear/data/api/clima_api_exception.dart';
@@ -15,7 +16,7 @@ Future<void> main() async {
     print('relativeHumidity: ${clima.relativeHumidity}');
     print('weatherCode: ${clima.weatherCode}');
   } on ClimaApiExeption catch (e) {
-    print('Error controlado: ${e}');
+    print('Error controlado: $e');
   } finally {
     apiClient.dispose();
   }

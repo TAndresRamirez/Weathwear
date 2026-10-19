@@ -9,14 +9,14 @@ sin backend externo.
 
 ## Estado del proyecto
 
-| Sprint | Alcance                                  | Estado      | Tag            |
-| ------ | ---------------------------------------- | ----------- | -------------- |
-| 1      | Estructura del proyecto y esquema SQLite | Completado  | `v0.1-sprint1` |
-| 2      | ETL: extracción desde Open-Meteo         | Completado  | `v0.2-sprint2` |
-| 3      | ETL: transformación, carga y scheduler   | Completado  | `v0.3-sprint3` |
-| 4      | Recomendación y visión computacional     | En progreso | –              |
-| 5      | Interfaz de usuario                      | Pendiente   | –              |
-| 6      | Despliegue y cierre                      | Pendiente   | –              |
+| Sprint | Alcance                                  | Estado     | Tag            |
+| ------ | ---------------------------------------- | ---------- | -------------- |
+| 1      | Estructura del proyecto y esquema SQLite | Completado | `v0.1-sprint1` |
+| 2      | ETL: extracción desde Open-Meteo         | Completado | `v0.2-sprint2` |
+| 3      | ETL: transformación, carga y scheduler   | Completado | `v0.3-sprint3` |
+| 4      | Recomendación y visión computacional     | Completado | `v0.4-sprint4` |
+| 5      | Interfaz de usuario                      | Pendiente  | –              |
+| 6      | Despliegue y cierre                      | Pendiente  | –              |
 
 Backlog y tablero: pestaña **Projects** del repositorio.
 

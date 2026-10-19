@@ -40,10 +40,7 @@ void callbackDispatcher() {
 
 class EtlScheduler {
   Future<void> initialize() async {
-    await Workmanager().initialize(
-      callbackDispatcher,
-      isInDebugMode: kDebugMode,
-    );
+    await Workmanager().initialize(callbackDispatcher);
   }
 
   Future<void> shedulerPeriodic() async {
