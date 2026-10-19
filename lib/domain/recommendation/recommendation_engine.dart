@@ -61,9 +61,8 @@ class RecommendationEngine {
       prenda.tempMin,
       prenda.tempMax,
     );
-    final cond =
-        prenda.condicionAplicable.trim().toLowerCase() ==
-            clima.condicion.toLowerCase()
+    // La prenda puede servir para varias condiciones: basta que una coincida
+    final cond = prenda.condiciones.contains(clima.condicion.toLowerCase())
         ? 1.0
         : 0.0;
     return pesoTemperatura * temp + pesoCondicion * cond;

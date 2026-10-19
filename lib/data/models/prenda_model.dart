@@ -19,6 +19,13 @@ class PrendaModel {
 
   PrendaCategoria get categoria => PrendaCategoriaMapper.fromTipo(tipo);
 
+  // Condiciones aplicables como lista (la columna guarda "lloviendo","nublado")
+  List<String> get condiciones => condicionAplicable
+      .split(",")
+      .map((c) => c.trim().toLowerCase())
+      .where((c) => c.isNotEmpty)
+      .toList();
+
   Map<String, Object?> toMap() => {
     if (idPrenda != null) 'id_prenda': idPrenda,
     'tipo': tipo,
@@ -36,5 +43,20 @@ class PrendaModel {
     tempMin: (map['temp_min'] as num).toDouble(),
     tempMax: (map['temp_max'] as num).toDouble(),
     condicionAplicable: map['condicion_aplicable'] as String,
+  );
+
+  /// Copia con cambios. La imagen y el id no cambian al editar una prenda.
+  PrendaModel copyWith({
+    String? tipo,
+    double? tempMin,
+    double? tempMax,
+    String? condicionAplicable,
+  }) => PrendaModel(
+    idPrenda: idPrenda,
+    tipo: tipo ?? this.tipo,
+    imagenRuta: imagenRuta,
+    tempMin: tempMin ?? this.tempMin,
+    tempMax: tempMax ?? this.tempMax,
+    condicionAplicable: condicionAplicable ?? this.condicionAplicable,
   );
 }

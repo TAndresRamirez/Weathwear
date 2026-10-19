@@ -66,4 +66,30 @@ void main() {
       throwsA(isA<RecommendationException>()),
     );
   });
+
+  test('varias condiciones: puntua si alguna coincide con el clima', () {
+    final engine = RecommendationEngine();
+    final clima = ClimaModel(
+      fechaHora: DateTime(2026, 10, 19, 12),
+      temperatura: 20,
+      humedad: 50,
+      condicion: 'nublado',
+    );
+    PrendaModel p(String c) => PrendaModel(
+      tipo: 'Polera',
+      imagenRuta: '/x.jpg',
+      tempMin: 15,
+      tempMax: 25,
+      condicionAplicable: c,
+    );
+
+    expect(
+      engine.puntaje(clima, p('soleado,nublado')),
+      engine.puntaje(clima, p('nublado')),
+    );
+    expect(
+      engine.puntaje(clima, p('soleado,nublado')),
+      greaterThan(engine.puntaje(clima, p('soleado'))),
+    );
+  });
 }

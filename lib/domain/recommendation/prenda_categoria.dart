@@ -23,4 +23,13 @@ class PrendaCategoriaMapper {
         throw ArgumentError('Tipo de prenda desconocido: $tipo');
     }
   }
+
+  // Tipos que produce el clasificador (mismos que labels.txt), para el selector
+  static const List<String> tiposValidos = [
+    'Polera',
+    'Poleron',
+    'Chaqueta',
+    'Pantalon',
+    'Shorts',
+  ];
 }

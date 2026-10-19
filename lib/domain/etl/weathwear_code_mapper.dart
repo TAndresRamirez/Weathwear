@@ -1,6 +1,16 @@
 // Mapeo de codigo WMO de Open-Meteo a categorias usadas en el proyecto
 
 class WeathwearCodeMapper {
+  static const List<String> condiciones = [
+    'soleado',
+    'parcialmente nublado',
+    'nublado',
+    'llovizna',
+    'nieve',
+    'lluvia',
+    'tormenta',
+  ];
+
   static String toCondicion(int weatherCode) {
     if (weatherCode == 0) return 'soleado';
     if (weatherCode <= 3) return 'parcialmente nublado';
