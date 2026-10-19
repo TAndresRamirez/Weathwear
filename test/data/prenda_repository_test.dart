@@ -24,7 +24,7 @@ void main() {
         temp_min REAL NOT NULL,
         temp_max REAL NOT NULL,
         condicion_aplicable TEXT NOT NULL,
-        activa INTEGER NOT NULL 1,
+        activa INTEGER NOT NULL DEFAULT 1,
         CHECK (temp_min <= temp_max)
       )
     ''');

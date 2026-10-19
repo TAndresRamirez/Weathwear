@@ -6,7 +6,16 @@ class Outfit {
   final PrendaModel inferior;
   final PrendaModel? exterior;
 
-  const Outfit({required this.superior, required this.inferior, this.exterior});
+  // Puntaje promedio de las prendas incluidas
+  // Se guarda luego en Recomendacion.nivel_similitud
+  final double similitud;
+
+  const Outfit({
+    required this.superior,
+    required this.inferior,
+    this.exterior,
+    required this.similitud,
+  });
 
   List<PrendaModel> get prendas => [superior, inferior, ?exterior];
 }

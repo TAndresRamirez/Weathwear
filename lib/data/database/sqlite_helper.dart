@@ -63,7 +63,7 @@ class SqliteHelper {
         temp_min            REAL NOT NULL,
         temp_max            REAL NOT NULL,
         condicion_aplicable TEXT NOT NULL,
-        activa              INTEGER NOT NULL DEFAULT 1
+        activa              INTEGER NOT NULL DEFAULT 1,
         CHECK (temp_min <= temp_max)
       )
     ''');
@@ -118,7 +118,7 @@ class SqliteHelper {
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
       await db.execute(
-        'ALTER TABLE Prenda ADD COLUM activa INTEGER NOT NULL DEFAULT 1',
+        'ALTER TABLE Prenda ADD COLUMN activa INTEGER NOT NULL DEFAULT 1',
       );
     }
   }
