@@ -1,57 +1,89 @@
-import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:weathwear/data/api/clima_api_client.dart';
 import 'package:weathwear/data/models/clima_model.dart';
+import 'package:weathwear/data/models/prenda_model.dart';
 import 'package:weathwear/data/repositories/clima_repository.dart';
+import 'package:weathwear/data/repositories/prenda_repository.dart';
+import 'package:weathwear/data/repositories/recomendacion_repository.dart';
 import 'package:weathwear/domain/etl/clima_transformer.dart';
 import 'package:weathwear/domain/etl/etl_pipeline.dart';
+import 'package:weathwear/domain/recommendation/generar_recomendacion_use_case.dart';
+import 'package:weathwear/domain/recommendation/recommendation_engine.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key, this.loader});
+  const HomeScreen({super.key, this.loader, this.recomendar});
 
-  // Permite inyectar la carga de datos (tests). Si es null, usa el flujo real
+  /// Inyectables para tests. Si son null se usa el flujo real.
   final Future<ClimaModel?> Function({bool force})? loader;
+  final Future<RecomendacionResultado> Function()? recomendar;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
+// Lo que pinta la pantalla en un momento dado
+class _HomeData {
+  const _HomeData({this.clima, this.recomendacion, this.mensajeReco});
+  final ClimaModel? clima;
+  final RecomendacionResultado? recomendacion;
+  final String? mensajeReco; // por qué no hay recomendación
+}
+
 class _HomeScreenState extends State<HomeScreen> {
-  final _repository = ClimaRepository();
-  late Future<ClimaModel?> _future;
+  final _climaRepo = ClimaRepository();
+  late Future<_HomeData> _future;
 
   @override
   void initState() {
     super.initState();
-    _future = _load();
+    _future = _loadAll();
   }
 
-  /// Lee el ultimo clima: si no hay o esta desactualizado (>1 h),corre el ETL
-  Future<ClimaModel?> _load({bool force = false}) => widget.loader != null
+  Future<ClimaModel?> _loadClima({bool force = false}) => widget.loader != null
       ? widget.loader!(force: force)
-      : _loadDefault(force: force);
+      : _loadClimaDefault(force: force);
 
-  Future<ClimaModel?> _loadDefault({bool force = false}) async {
-    var clima = await _repository.getUltimo();
+  /// Lee el último clima; si falta o tiene >1 h, corre el ETL.
+  Future<ClimaModel?> _loadClimaDefault({bool force = false}) async {
+    var clima = await _climaRepo.getUltimo();
     final stale =
         clima == null ||
         DateTime.now().difference(clima.fechaHora) > const Duration(hours: 1);
-
     if (force || stale) {
-      // EtlPipeline cierra su ApiClient en run(): se crea uno nuevo por ejecucion
-      await EtlPipeline(
-        ClimaApiClient(),
-        ClimaTransformer(),
-        _repository,
-      ).run();
-      clima = await _repository.getUltimo();
+      // EtlPipeline cierra su ApiClient en run(): uno nuevo por ejecución.
+      await EtlPipeline(ClimaApiClient(), ClimaTransformer(), _climaRepo).run();
+      clima = await _climaRepo.getUltimo();
     }
     return clima;
   }
 
+  Future<RecomendacionResultado> _recomendar() => widget.recomendar != null
+      ? widget.recomendar!()
+      : GenerarRecomendacionUseCase(
+          _climaRepo,
+          PrendaRepository(),
+          RecomendacionRepository(),
+        )();
+
+  Future<_HomeData> _loadAll({bool force = false}) async {
+    final clima = await _loadClima(force: force);
+    if (clima == null) return const _HomeData();
+    try {
+      return _HomeData(clima: clima, recomendacion: await _recomendar());
+    } on RecommendationException catch (e) {
+      return _HomeData(clima: clima, mensajeReco: e.message);
+    } catch (_) {
+      return _HomeData(
+        clima: clima,
+        mensajeReco: 'No se pudo generar la recomendación',
+      );
+    }
+  }
+
   Future<void> _refresh() async {
-    final next = _load(force: true);
+    final next = _loadAll(force: true);
     setState(() => _future = next);
     await next;
   }
@@ -60,21 +92,27 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return RefreshIndicator(
       onRefresh: _refresh,
-      child: FutureBuilder<ClimaModel?>(
+      child: FutureBuilder<_HomeData>(
         future: _future,
         builder: (context, snap) {
           if (snap.connectionState != ConnectionState.done) {
             return const Center(child: CircularProgressIndicator());
           }
-          final clima = snap.data;
-          // ListView (no Column) para qeu el pull-to-refresh funcione siempre.
+          final data = snap.data;
+          // ListView (no Column) para que el pull-to-refresh siempre funcione
           return ListView(
             padding: const EdgeInsets.all(24),
             children: [
-              if (snap.hasError || clima == null)
+              if (snap.hasError || data?.clima == null)
                 const _EmptyState()
-              else
-                _ClimaCard(clima: clima),
+              else ...[
+                _ClimaCard(clima: data!.clima!),
+                const SizedBox(height: 16),
+                _RecomendacionCard(
+                  resultado: data.recomendacion,
+                  mensaje: data.mensajeReco,
+                ),
+              ],
             ],
           );
         },
@@ -100,7 +138,6 @@ class _ClimaCard extends StatelessWidget {
               style: text.displayMedium,
             ),
             const SizedBox(height: 8),
-            // Key estable: el test no depende del copy ni de mayúsculas.
             Text(
               clima.condicion,
               key: const Key('clima_condicion'),
@@ -115,6 +152,77 @@ class _ClimaCard extends StatelessWidget {
   }
 }
 
+class _RecomendacionCard extends StatelessWidget {
+  const _RecomendacionCard({this.resultado, this.mensaje});
+  final RecomendacionResultado? resultado;
+  final String? mensaje;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final r = resultado;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: r == null
+            ? Text(
+                mensaje ?? 'Sin recomendación disponible',
+                textAlign: TextAlign.center,
+              )
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Hoy te recomiendo', style: text.titleMedium),
+                  if (r.climaDesactualizado)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        'El clima tiene más de 3 horas; desliza para actualizar.',
+                        style: text.bodySmall,
+                      ),
+                    ),
+                  const SizedBox(height: 12),
+                  for (final p in r.outfit.prendas) _PrendaTile(prenda: p),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Afinidad: ${(r.outfit.similitud * 100).round()}%',
+                    style: text.bodySmall,
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+}
+
+class _PrendaTile extends StatelessWidget {
+  const _PrendaTile({required this.prenda});
+  final PrendaModel prenda;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.file(
+          File(prenda.imagenRuta),
+          width: 56,
+          height: 56,
+          fit: BoxFit.cover,
+          // Si el archivo se borró, no rompe la lista
+          errorBuilder: (_, _, _) => const SizedBox(
+            width: 56,
+            height: 56,
+            child: Icon(Icons.checkroom_outlined),
+          ),
+        ),
+      ),
+      title: Text(prenda.tipo),
+    );
+  }
+}
+
 class _EmptyState extends StatelessWidget {
   const _EmptyState();
 
@@ -122,7 +230,7 @@ class _EmptyState extends StatelessWidget {
   Widget build(BuildContext context) => const Padding(
     padding: EdgeInsets.only(top: 80),
     child: Text(
-      'Sin datos climaticos. Revisa tu conexion y desliza para reinintentar.',
+      'Sin datos climáticos. Revisa tu conexión y desliza para reintentar.',
       textAlign: TextAlign.center,
     ),
   );
