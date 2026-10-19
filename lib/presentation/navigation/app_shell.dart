@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:weathwear/presentation/screens/home_screen.dart';
+import 'package:weathwear/presentation/screens/prendas_screen.dart';
 
 // Contenedor con barra inferior
 class AppShell extends StatefulWidget {
@@ -15,7 +16,7 @@ class _AppShellState extends State<AppShell> {
   // Index conserva el estado de cada pestaña al cambiar
   static const _screens = <Widget>[
     HomeScreen(),
-    Center(child: Text('Prendas (pendiente)')),
+    PrendasScreen(),
     Center(child: Text('Historial (pendiente)')),
   ];
 
