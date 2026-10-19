@@ -46,7 +46,14 @@ class GenerarRecomendacionUseCase {
     final prendas = await _prendaRepo.getAll();
     final outfit = _engine.recommend(clima, prendas);
 
-    await _recoRepo.insertOutfit(idClima: clima.idClima!, outfit: outfit);
+    // Idempotente: no duplica el historial si el outfit no cambio para este clima
+    final previos = await _recoRepo.idsUltimoOutfit(clima.idClima!);
+    final nuevos = outfit.prendas.map((p) => p.idPrenda!).toSet();
+    final sinCambios =
+        previos.length == nuevos.length && previos.containsAll(nuevos);
+    if (!sinCambios) {
+      await _recoRepo.insertOutfit(idClima: clima.idClima!, outfit: outfit);
+    }
 
     final desactualizado = _now().difference(clima.fechaHora) > maxAntiguedad;
     return RecomendacionResultado(outfit, clima, desactualizado);

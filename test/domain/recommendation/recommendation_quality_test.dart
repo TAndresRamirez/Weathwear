@@ -1,3 +1,4 @@
+// ignore_for_file: avoid_print
 import 'package:flutter_test/flutter_test.dart';
 import 'package:weathwear/data/models/clima_model.dart';
 import 'package:weathwear/data/models/prenda_model.dart';
@@ -59,8 +60,9 @@ void main() {
           (PrendaCategoria.superior, outfit.superior),
           (PrendaCategoria.inferior, outfit.inferior),
         ]) {
-          if (!hayCubierta(cat, t))
+          if (!hayCubierta(cat, t)) {
             continue; // sin candidata valida no se evalua
+          }
           evaluados++;
           if (!cubre(elegida, t)) {
             fallos.add('$t C / $c: ${elegida.tipo} fuera de su rango');

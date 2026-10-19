@@ -118,4 +118,14 @@ void main() {
 
     expect(() => buildUseCase()(), throwsA(isA<RecommendationException>()));
   });
+
+  test('llamar dos veces con el mismo clima no duplica el historial', () async {
+    await seedPrendas();
+    await seedClima(ahora);
+
+    await buildUseCase()();
+    await buildUseCase()();
+
+    expect((await db.query('Recomendacion')).length, 2); // 1 outfit = 2 filas
+  });
 }

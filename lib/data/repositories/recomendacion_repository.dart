@@ -30,4 +30,19 @@ class RecomendacionRepository {
       await batch.commit(noResult: true);
     });
   }
+
+  // Ids de prenda del ultimo outfit generado para ese clima (vacio si no hay)
+  // fecha_generacion es ISO 8601, asi que MAX() ordena bien como texto
+  Future<Set<int>> idsUltimoOutfit(int idClima) async {
+    final db = await _dbHelper.database;
+    final rows = await db.rawQuery(
+      '''
+      SELECT id_prenda FROM Recomendacion
+      WHERE id_clima = ? AND fecha_generacion = (
+        SELECT MAX(fecha_generacion) FROM Recomendacion WHERE id_clima = ?)
+      ''',
+      [idClima, idClima],
+    );
+    return rows.map((r) => r['id_prenda'] as int).toSet();
+  }
 }
