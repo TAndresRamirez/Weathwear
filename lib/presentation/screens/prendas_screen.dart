@@ -18,41 +18,59 @@ class PrendasScreen extends StatefulWidget {
 }
 
 class _PrendasScreenState extends State<PrendasScreen> {
-  late Future<List<PrendaModel>> _future;
+  List<PrendaModel> _prendas = const [];
+  bool _cargando = true;
+  bool _error = false;
   bool _menuAbierto = false;
 
   @override
   void initState() {
     super.initState();
-    _future = _load();
+    _reload();
   }
 
   Future<List<PrendaModel>> _load() =>
       widget.loader != null ? widget.loader!() : PrendaRepository().getAll();
 
+  // Estado explícito: cada lectura termina en un setState con la lista nueva.
+  // Mientras recarga se sigue mostrando la lista anterior (sin parpadeo).
   Future<void> _reload() async {
-    final next = _load();
-    setState(() => _future = next);
-    await next;
+    try {
+      final prendas = await _load();
+      debugPrint('Prendas recargadas: ${prendas.length}');
+      if (!mounted) return;
+      setState(() {
+        _prendas = prendas;
+        _error = false;
+        _cargando = false;
+      });
+    } catch (e) {
+      debugPrint('Error recargando prendas: $e');
+      if (!mounted) return;
+      setState(() {
+        _error = true;
+        _cargando = false;
+      });
+    }
   }
 
-  // Abre el registro directo en cámara o galería; si se guardó, recarga
+  // Abre el registro directo en cámara o galería; al volver, recarga siempre
   Future<void> _abrirRegistro(ImageSource source) async {
     setState(() => _menuAbierto = false);
-    final registrada = await Navigator.of(context).push<bool>(
+    await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) => RegistrarPrendaScreen(initialSource: source),
       ),
     );
-    if (registrada == true && mounted) _reload();
+    if (mounted) _reload();
   }
 
-  // Abre la edición de una prenda; si hubo cambios, recarga la grilla
+  // Abre la edición de una prenda; al volver, recarga siempre
   Future<void> _editar(PrendaModel prenda) async {
-    final cambiada = await Navigator.of(context).push<bool>(
+    await Navigator.of(context).push<bool>(
       MaterialPageRoute(builder: (_) => EditarPrendaScreen(prenda: prenda)),
     );
-    if (cambiada == true && mounted) _reload();
+    if (mounted) _reload();
   }
 
   Widget _buildFab() {
@@ -97,53 +115,48 @@ class _PrendasScreenState extends State<PrendasScreen> {
     );
   }
 
+  Widget _cuerpo() {
+    if (_cargando) return const Center(child: CircularProgressIndicator());
+
+    // AlwaysScrollable: sin esto el pull-to-refresh no se dispara con pocas prendas
+    if (_error || _prendas.isEmpty) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(24),
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 80),
+            child: Text(
+              _error
+                  ? 'No se pudieron cargar las prendas.'
+                  : 'Aún no tienes prendas registradas.',
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ],
+      );
+    }
+
+    return GridView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(16),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisSpacing: 12,
+        crossAxisSpacing: 12,
+        childAspectRatio: 0.8,
+      ),
+      itemCount: _prendas.length,
+      itemBuilder: (_, i) =>
+          _PrendaCard(prenda: _prendas[i], onTap: () => _editar(_prendas[i])),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       floatingActionButton: _buildFab(),
-      body: RefreshIndicator(
-        onRefresh: _reload,
-        child: FutureBuilder<List<PrendaModel>>(
-          future: _future,
-          builder: (context, snap) {
-            if (snap.connectionState != ConnectionState.done) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            final prendas = snap.data ?? const <PrendaModel>[];
-            // ListView en el caso vacío para que el pull-to-refresh funcione
-            if (snap.hasError || prendas.isEmpty) {
-              return ListView(
-                padding: const EdgeInsets.all(24),
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(top: 80),
-                    child: Text(
-                      snap.hasError
-                          ? 'No se pudieron cargar las prendas.'
-                          : 'Aún no tienes prendas registradas.',
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ],
-              );
-            }
-            return GridView.builder(
-              padding: const EdgeInsets.all(16),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-                childAspectRatio: 0.8,
-              ),
-              itemCount: prendas.length,
-              itemBuilder: (_, i) => _PrendaCard(
-                prenda: prendas[i],
-                onTap: () => _editar(prendas[i]),
-              ),
-            );
-          },
-        ),
-      ),
+      body: RefreshIndicator(onRefresh: _reload, child: _cuerpo()),
     );
   }
 }

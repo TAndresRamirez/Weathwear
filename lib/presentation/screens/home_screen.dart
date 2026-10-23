@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:weathwear/data/api/clima_api_client.dart';
+import 'package:weathwear/data/location/ubicacion_service.dart';
 import 'package:weathwear/data/models/clima_model.dart';
 import 'package:weathwear/data/models/prenda_model.dart';
 import 'package:weathwear/data/repositories/clima_repository.dart';
@@ -33,6 +34,7 @@ class _HomeData {
 
 class _HomeScreenState extends State<HomeScreen> {
   final _climaRepo = ClimaRepository();
+  final _ubicacion = UbicacionService();
   late Future<_HomeData> _future;
 
   @override
@@ -53,7 +55,13 @@ class _HomeScreenState extends State<HomeScreen> {
         DateTime.now().difference(clima.fechaHora) > const Duration(hours: 1);
     if (force || stale) {
       // EtlPipeline cierra su ApiClient en run(): uno nuevo por ejecución.
-      await EtlPipeline(ClimaApiClient(), ClimaTransformer(), _climaRepo).run();
+      // En primer plano se pide GPS (y se cachea para el ETL en background).
+      await EtlPipeline(
+        ClimaApiClient(),
+        ClimaTransformer(),
+        _climaRepo,
+        coordenadas: _ubicacion.obtener,
+      ).run();
       clima = await _climaRepo.getUltimo();
     }
     return clima;
@@ -145,6 +153,13 @@ class _ClimaCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text('Humedad: ${clima.humedad.toStringAsFixed(0)}%'),
+            // Nullable: filas anteriores a la migración v3 no tienen estos datos
+            if (clima.sensacionTermica != null)
+              Text(
+                'Sensación térmica: ${clima.sensacionTermica!.toStringAsFixed(1)}°C',
+              ),
+            if (clima.vientoKmh != null)
+              Text('Viento: ${clima.vientoKmh!.toStringAsFixed(0)} km/h'),
           ],
         ),
       ),
