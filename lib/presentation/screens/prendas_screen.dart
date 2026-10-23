@@ -155,6 +155,7 @@ class _PrendasScreenState extends State<PrendasScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.transparent,
       floatingActionButton: _buildFab(),
       body: RefreshIndicator(onRefresh: _reload, child: _cuerpo()),
     );
