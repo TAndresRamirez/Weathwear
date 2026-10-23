@@ -9,7 +9,7 @@ import 'package:sqflite/sqflite.dart';
 // Punto unico de acceso a la base de datos local del sistema
 class SqliteHelper {
   static const String _dbName = 'weathwear.db';
-  static const int _dbVersion = 2;
+  static const int _dbVersion = 3;
 
   //Singleton: una sola instancia de esta clase en toda la app
   SqliteHelper._internal();
@@ -47,11 +47,13 @@ class SqliteHelper {
   Future<void> _onCreate(Database db, int version) async {
     await db.execute('''
       CREATE TABLE IF NOT EXISTS Clima (
-        id_clima    INTEGER PRIMARY KEY AUTOINCREMENT,
-        fecha_hora  TEXT NOT NULL,
-        temperatura REAL NOT NULL,
-        humedad     REAL NOT NULL,
-        condicion   TEXT NOT NULL
+        id_clima          INTEGER PRIMARY KEY AUTOINCREMENT,
+        fecha_hora        TEXT NOT NULL,
+        temperatura       REAL NOT NULL,
+        humedad           REAL NOT NULL,
+        condicion         TEXT NOT NULL,
+        sensacion_termica REAL,
+        viento_kmh        REAL
       )
     ''');
 
@@ -116,10 +118,9 @@ class SqliteHelper {
 
   // Migra instalaciones existentes
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    if (oldVersion < 2) {
-      await db.execute(
-        'ALTER TABLE Prenda ADD COLUMN activa INTEGER NOT NULL DEFAULT 1',
-      );
+    if (oldVersion < 3) {
+      await db.execute('ALTER TABLE Clima ADD COLUMN sensacion_termica REAL');
+      await db.execute('ALTER TABLE Clima ADD COLUMN viento_kmh REAL');
     }
   }
 }

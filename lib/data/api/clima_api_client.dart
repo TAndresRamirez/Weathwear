@@ -27,7 +27,7 @@ class ClimaApiClient {
       queryParameters: {
         'latitude': latitude.toString(),
         'longitude': longitude.toString(),
-        'current': 'temperature_2m,relative_humidity_2m,weather_code',
+        'current': ApiConstants.currentParams,
         'timezone': ApiConstants.timezone,
       },
     );
@@ -50,6 +50,9 @@ class ClimaApiClient {
       return ClimaRawModels.fromJson(json);
     } on FormatException catch (e) {
       throw ClimaApiParseException(e.message);
+    } on TypeError catch (e) {
+      // Un campo con tipo inseperado lanza TypeError, no FormatException
+      throw ClimaApiParseException(e.toString());
     }
   }
 

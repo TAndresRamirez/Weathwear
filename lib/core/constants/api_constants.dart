@@ -10,4 +10,9 @@ class ApiConstants {
 
   static const String timezone = "America/Santiago";
   static const Duration requestTimeout = Duration(seconds: 10);
+
+  // Variables del bloque "current" que se piden a Open-Meteo
+  static const String currentParams =
+      'temperature_2m,relative_humidity_2m,weather_code,'
+      'apparent_temperature,wind_speed_10m';
 }

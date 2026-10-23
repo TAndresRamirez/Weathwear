@@ -10,6 +10,8 @@ class ClimaTransformer {
       temperatura: raw.temperature,
       humedad: raw.relativeHumidity,
       condicion: WeathwearCodeMapper.toCondicion(raw.weatherCode),
+      sensacionTermica: raw.apparentTermperature,
+      vientoKmh: raw.windSpeed,
     );
   }
 }
