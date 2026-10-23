@@ -3,6 +3,7 @@ import 'package:workmanager/workmanager.dart';
 
 import 'package:weathwear/data/api/clima_api_client.dart';
 import 'package:weathwear/data/database/sqlite_helper.dart';
+import 'package:weathwear/data/location/ubicacion_service.dart';
 import 'package:weathwear/data/repositories/clima_repository.dart';
 import 'package:weathwear/domain/etl/clima_transformer.dart';
 import 'package:weathwear/domain/etl/etl_pipeline.dart';
@@ -20,6 +21,8 @@ void callbackDispatcher() {
       ClimaApiClient(),
       ClimaTransformer(),
       ClimaRepository(dbHelper: SqliteHelper.instance),
+      // En segundo plano solo se lee la ubicación cacheada, nunca el GPS
+      coordenadas: UbicacionService().ultimaConocida,
     );
 
     final result = await pipeline.run();
@@ -40,7 +43,10 @@ void callbackDispatcher() {
 
 class EtlScheduler {
   Future<void> initialize() async {
-    await Workmanager().initialize(callbackDispatcher);
+    await Workmanager().initialize(
+      callbackDispatcher,
+      isInDebugMode: kDebugMode,
+    );
   }
 
   Future<void> shedulerPeriodic() async {

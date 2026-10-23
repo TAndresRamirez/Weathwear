@@ -43,6 +43,7 @@ dependencies:
   path: ^1.9.1
   image: ^4.10.1
   image_picker: ^1.2.3
+  geolocator: ^14.1.2
 
 dev_dependencies:
   flutter_test:
