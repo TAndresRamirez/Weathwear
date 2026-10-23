@@ -14,4 +14,8 @@ void main() {
     final primeroDeMes = DateTime(2026, 11, 1, 9);
     expect(etiquetaDia(DateTime(2026, 10, 31, 22), hoy: primeroDeMes), 'Ayer');
   });
+
+  test('etiquetaCabecera: día de la semana y número', () {
+    expect(etiquetaCabecera(DateTime(2026, 10, 23)), 'Viernes 23');
+  });
 }

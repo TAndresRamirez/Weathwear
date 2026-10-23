@@ -52,7 +52,8 @@ void main() {
     expect(find.text('21.4°C'), findsOneWidget);
     expect(find.byKey(const Key('clima_condicion')), findsOneWidget);
     expect(find.text('soleado'), findsOneWidget);
-    expect(find.text('Humedad: 36%'), findsOneWidget);
+    expect(find.text('Humedad'), findsOneWidget);
+    expect(find.text('36%'), findsOneWidget);
   });
 
   testWidgets('muestra estado vacio si no hay datos', (tester) async {

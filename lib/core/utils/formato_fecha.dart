@@ -19,3 +19,16 @@ String etiquetaDia(DateTime fecha, {DateTime? hoy}) {
   if (diff == 1) return 'Ayer';
   return formatearFecha(fecha);
 }
+
+const _dias = [
+  'Lunes',
+  'Martes',
+  'Miércoles',
+  'Jueves',
+  'Viernes',
+  'Sábado',
+  'Domingo',
+];
+
+/// Cabecera de Hoy: "Viernes 23". Sin intl: la lista alcanza para un solo idioma.
+String etiquetaCabecera(DateTime d) => '${_dias[d.weekday - 1]} ${d.day}';
