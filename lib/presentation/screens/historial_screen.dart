@@ -1,16 +1,24 @@
-import 'dart:io';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show ValueListenable;
+import 'package:weathwear/core/theme/app_theme.dart';
 import 'package:weathwear/core/utils/formato_fecha.dart';
 import 'package:weathwear/data/models/historial_entry.dart';
 import 'package:weathwear/data/models/prenda_model.dart';
 import 'package:weathwear/data/repositories/recomendacion_repository.dart';
+import 'package:weathwear/presentation/widgets/prenda_foto_tile.dart';
 
 class HistorialScreen extends StatefulWidget {
-  const HistorialScreen({super.key, this.loader});
+  const HistorialScreen({
+    super.key,
+    this.loader,
+    this.intervaloRotacion = const Duration(seconds: 3),
+  });
 
-  /// Inyectable para tests. Si es null usa el repositorio real.
+  /// Inyectables para tests. Si loader es null usa el repositorio real.
   final Future<List<HistorialEntry>> Function()? loader;
+  final Duration intervaloRotacion;
 
   @override
   State<HistorialScreen> createState() => _HistorialScreenState();
@@ -19,15 +27,44 @@ class HistorialScreen extends StatefulWidget {
 class _HistorialScreenState extends State<HistorialScreen> {
   late Future<List<HistorialEntry>> _future;
 
+  // Un solo temporizador para todas las tarjetas: true = se muestra la
+  // prenda exterior (3ª) en lugar de superior + inferior.
+  final _verExterior = ValueNotifier<bool>(false);
+  Timer? _timer;
+
   @override
   void initState() {
     super.initState();
     _future = _load();
   }
 
-  Future<List<HistorialEntry>> _load() => widget.loader != null
-      ? widget.loader!()
-      : RecomendacionRepository().getHistorial();
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _verExterior.dispose();
+    super.dispose();
+  }
+
+  Future<List<HistorialEntry>> _load() async {
+    final entries = widget.loader != null
+        ? await widget.loader!()
+        : await RecomendacionRepository().getHistorial();
+    if (mounted) _ajustarRotacion(entries.any((e) => e.prendas.length > 2));
+    return entries;
+  }
+
+  // El timer solo corre si hay al menos un outfit de 3 prendas
+  void _ajustarRotacion(bool necesaria) {
+    if (!necesaria) {
+      _timer?.cancel();
+      _timer = null;
+      return;
+    }
+    _timer ??= Timer.periodic(
+      widget.intervaloRotacion,
+      (_) => _verExterior.value = !_verExterior.value,
+    );
+  }
 
   Future<void> _reload() async {
     final next = _load();
@@ -71,7 +108,8 @@ class _HistorialScreenState extends State<HistorialScreen> {
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(16),
             itemCount: entries.length,
-            itemBuilder: (_, i) => _DiaCard(entry: entries[i]),
+            itemBuilder: (_, i) =>
+                _OutfitCard(entry: entries[i], verExterior: _verExterior),
           );
         },
       ),
@@ -79,44 +117,24 @@ class _HistorialScreenState extends State<HistorialScreen> {
   }
 }
 
-/// Un bloque por día: la última recomendación generada ese día.
-class _DiaCard extends StatelessWidget {
-  const _DiaCard({required this.entry});
+/// Un bloque por día: prendas a la izquierda, cuadro "Datos" a la derecha.
+class _OutfitCard extends StatelessWidget {
+  const _OutfitCard({required this.entry, required this.verExterior});
+
   final HistorialEntry entry;
+  final ValueListenable<bool> verExterior;
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    final clima = entry.clima;
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        padding: const EdgeInsets.all(12),
+        child: Row(
           children: [
-            Text(etiquetaDia(entry.fechaGeneracion), style: text.titleLarge),
-            Text(
-              'Última recomendación: ${formatearHora(entry.fechaGeneracion)}',
-              style: text.labelMedium,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              '${clima.temperatura.toStringAsFixed(1)}°C · ${clima.condicion} · '
-              '${clima.humedad.toStringAsFixed(0)}%',
-              style: text.titleMedium,
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 12,
-              runSpacing: 8,
-              children: [for (final p in entry.prendas) _PrendaChip(prenda: p)],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Afinidad: ${(entry.similitud * 100).round()}%',
-              style: text.bodySmall,
-            ),
+            _PrendasSlots(prendas: entry.prendas, verExterior: verExterior),
+            const SizedBox(width: 8),
+            Expanded(child: _DatosBox(entry: entry)),
           ],
         ),
       ),
@@ -124,32 +142,104 @@ class _DiaCard extends StatelessWidget {
   }
 }
 
-class _PrendaChip extends StatelessWidget {
-  const _PrendaChip({required this.prenda});
-  final PrendaModel prenda;
+/// Dos casillas fijas. Con 3 prendas alterna: [superior, inferior] -> [exterior]
+/// (la exterior ocupa la casilla 1 y la 2 queda vacía), siempre en el mismo lugar.
+class _PrendasSlots extends StatelessWidget {
+  const _PrendasSlots({required this.prendas, required this.verExterior});
+
+  final List<PrendaModel> prendas;
+  final ValueListenable<bool> verExterior;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: Image.file(
-            File(prenda.imagenRuta),
-            width: 64,
-            height: 64,
-            fit: BoxFit.cover,
-            // Si la foto se borró, no rompe la tarjeta
-            errorBuilder: (_, _, _) => const SizedBox(
-              width: 64,
-              height: 64,
-              child: Icon(Icons.checkroom_outlined),
-            ),
-          ),
+    if (prendas.length < 3) return _FilaPrendas(prendas: prendas);
+
+    return ValueListenableBuilder<bool>(
+      valueListenable: verExterior,
+      builder: (_, exterior, _) => AnimatedSwitcher(
+        duration: const Duration(milliseconds: 300),
+        child: _FilaPrendas(
+          key: ValueKey(exterior),
+          prendas: exterior ? [prendas[2]] : prendas.take(2).toList(),
         ),
-        const SizedBox(height: 4),
-        Text(prenda.tipo, style: Theme.of(context).textTheme.bodySmall),
-      ],
+      ),
+    );
+  }
+}
+
+class _FilaPrendas extends StatelessWidget {
+  const _FilaPrendas({super.key, required this.prendas});
+
+  static const double _tile = 72;
+  final List<PrendaModel> prendas;
+
+  Widget _slot(int i) => SizedBox(
+    width: _tile,
+    child: i < prendas.length
+        ? PrendaFotoTile(prenda: prendas[i], size: _tile)
+        : null,
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    // Alto fijo: el cambio de prendas no mueve el resto de la tarjeta
+    return SizedBox(
+      height: 100,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [_slot(0), const SizedBox(width: 8), _slot(1)],
+      ),
+    );
+  }
+}
+
+/// Todos los datos del momento de la recomendación, salvo la afinidad.
+class _DatosBox extends StatelessWidget {
+  const _DatosBox({required this.entry});
+  final HistorialEntry entry;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final clima = entry.clima;
+    // Texto oscuro fijo: el cian es claro en ambos temas
+    final cuerpo = text.bodySmall?.copyWith(color: Colors.black87);
+    final titulo = text.titleSmall?.copyWith(color: Colors.black87);
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: context.wColors.acento,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '${etiquetaDia(entry.fechaGeneracion)} · '
+            '${formatearHora(entry.fechaGeneracion)}',
+            style: titulo,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '${clima.temperatura.toStringAsFixed(1)}°C · ${clima.condicion}',
+            style: cuerpo,
+          ),
+          // Nullables: vacíos en filas anteriores a la migración v3
+          if (clima.sensacionTermica != null)
+            Text(
+              'Sensación ${clima.sensacionTermica!.toStringAsFixed(1)}°C',
+              style: cuerpo,
+            ),
+          Text('Humedad ${clima.humedad.toStringAsFixed(0)}%', style: cuerpo),
+          if (clima.vientoKmh != null)
+            Text(
+              'Viento ${clima.vientoKmh!.toStringAsFixed(0)} km/h',
+              style: cuerpo,
+            ),
+        ],
+      ),
     );
   }
 }
