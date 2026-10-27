@@ -9,7 +9,7 @@ import 'package:sqflite/sqflite.dart';
 // Punto unico de acceso a la base de datos local del sistema
 class SqliteHelper {
   static const String _dbName = 'weathwear.db';
-  static const int _dbVersion = 3;
+  static const int _dbVersion = 4; // <-- era 3
 
   //Singleton: una sola instancia de esta clase en toda la app
   SqliteHelper._internal();
@@ -43,7 +43,7 @@ class SqliteHelper {
     await db.execute('Pragma foreign_keys = ON');
   }
 
-  //Se ejecuta al crear el archivo .db
+  //Se ejecuta al crear el archivo .db (instalación nueva)
   Future<void> _onCreate(Database db, int version) async {
     await db.execute('''
       CREATE TABLE IF NOT EXISTS Clima (
@@ -95,6 +95,9 @@ class SqliteHelper {
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_clima_fecha ON Clima(fecha_hora)',
     );
+
+    // v4: en una instalación nueva se crean junto con el resto
+    await crearTablasOutfit(db);
   }
 
   //Utilidad para pruebas o cierre forzoso
@@ -116,11 +119,61 @@ class SqliteHelper {
     _database = null;
   }
 
-  // Migra instalaciones existentes
+  // Migra instalaciones existentes (se ejecuta una vez por versión nueva)
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 3) {
       await db.execute('ALTER TABLE Clima ADD COLUMN sensacion_termica REAL');
       await db.execute('ALTER TABLE Clima ADD COLUMN viento_kmh REAL');
     }
+    // v3 -> v4: agrega las tablas de outfits sin tocar los datos existentes
+    if (oldVersion < 4) {
+      await crearTablasOutfit(db);
+    }
+  }
+
+  // v4: outfits guardados, su composición y el registro de usos.
+  // Sin columnas de estadísticas: veces usado y temperatura promedio se
+  // calculan desde OutfitUso, así no hay datos redundantes que desincronizar.
+  // Público y estático para reutilizarlo en los tests.
+  static Future<void> crearTablasOutfit(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS Outfit (
+        id_outfit      INTEGER PRIMARY KEY AUTOINCREMENT,
+        fecha_creacion TEXT NOT NULL,
+        origen         TEXT NOT NULL DEFAULT 'manual'
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS OutfitPrenda (
+        id_outfit INTEGER NOT NULL,
+        id_prenda INTEGER NOT NULL,
+        PRIMARY KEY (id_outfit, id_prenda),
+        FOREIGN KEY (id_outfit) REFERENCES Outfit(id_outfit)
+          ON DELETE CASCADE,
+        FOREIGN KEY (id_prenda) REFERENCES Prenda(id_prenda)
+          ON DELETE RESTRICT
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS OutfitUso (
+        id_uso    INTEGER PRIMARY KEY AUTOINCREMENT,
+        id_outfit INTEGER NOT NULL,
+        id_clima  INTEGER NOT NULL,
+        fecha_uso TEXT NOT NULL,
+        FOREIGN KEY (id_outfit) REFERENCES Outfit(id_outfit)
+          ON DELETE CASCADE,
+        FOREIGN KEY (id_clima) REFERENCES Clima(id_clima)
+          ON DELETE RESTRICT
+      )
+    ''');
+
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_outfituso_outfit ON OutfitUso(id_outfit)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_outfitprenda_prenda ON OutfitPrenda(id_prenda)',
+    );
   }
 }

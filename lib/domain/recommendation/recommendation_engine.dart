@@ -68,6 +68,15 @@ class RecommendationEngine {
     return pesoTemperatura * temp + pesoCondicion * cond;
   }
 
+  // Afinidad de un conjunto de prendas con el clima: promedio de sus puntajes
+  // (para las tarjetas de outfits guardados contra el clima de hoy)
+  double afinidad(ClimaModel clima, Iterable<PrendaModel> prendas) {
+    final lista = prendas.toList();
+    if (lista.isEmpty) return 0;
+    return lista.map((p) => puntaje(clima, p)).reduce((a, b) => a + b) /
+        lista.length;
+  }
+
   // Dentro del rango: 0.75-1.0 (mas alto cuanto mas cerca del centro).
   // Fuera del rango: cae linealmente desde 0.75 hasta 0.
   // Es continua en los bordes del rango, sin saltos bruscos.
