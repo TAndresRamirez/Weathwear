@@ -9,6 +9,7 @@ import 'package:weathwear/domain/prendas/registrar_prenda_use_case.dart';
 import 'package:weathwear/domain/recommendation/prenda_categoria.dart';
 import 'package:weathwear/domain/vision/clothing_classifier.dart';
 import 'package:weathwear/presentation/widgets/prenda_clima_fields.dart';
+import 'package:weathwear/presentation/widgets/app_background.dart';
 
 /// CU-02 + CU-05: foto -> sugerencia del modelo -> confirmar/corregir -> guardar.
 /// Hace pop(true) si se registró una prenda.
@@ -193,11 +194,17 @@ class _RegistrarPrendaScreenState extends State<RegistrarPrendaScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Nueva prenda')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: _path == null ? _buildElegirFoto() : _buildFormulario(),
+    return AppBackground(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          title: const Text('Nueva prenda'),
+          backgroundColor: Colors.transparent,
+        ),
+        body: ListView(
+          padding: const EdgeInsets.all(16),
+          children: _path == null ? _buildElegirFoto() : _buildFormulario(),
+        ),
       ),
     );
   }

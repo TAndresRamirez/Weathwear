@@ -12,6 +12,9 @@ import 'package:weathwear/domain/recommendation/generar_recomendacion_use_case.d
 import 'package:weathwear/domain/recommendation/recommendation_engine.dart';
 import 'package:weathwear/presentation/widgets/clima_panel.dart';
 import 'package:weathwear/presentation/widgets/recomendacion_panel.dart';
+import 'package:weathwear/data/models/outfit_guardado.dart';
+import 'package:weathwear/data/repositories/outfit_repository.dart';
+import 'package:weathwear/domain/outfits/guardar_outfit_use_case.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, this.loader, this.recomendar});
@@ -71,11 +74,23 @@ class _HomeScreenState extends State<HomeScreen> {
     curve: Curves.easeOut,
   );
 
-  // TODO(etapa 4): persistir el outfit (tablas Outfit y OutfitPrenda, BD v4)
-  void _guardarComoOutfit() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Guardar outfits llega en la Etapa 4')),
-    );
+  Future<void> _guardarComoOutfit(RecomendacionResultado? r) async {
+    if (r == null) return;
+    // El messenger se captura antes del await (no usar context después)
+    final messenger = ScaffoldMessenger.of(context);
+    String mensaje;
+    try {
+      await GuardarOutfitUseCase(OutfitRepository())(
+        r.outfit.prendas,
+        origen: OutfitOrigen.recomendacion,
+      );
+      mensaje = 'Outfit guardado';
+    } on OutfitException catch (e) {
+      mensaje = e.message; // p. ej. "Este outfit ya está guardado"
+    } catch (_) {
+      mensaje = 'No se pudo guardar el outfit';
+    }
+    messenger.showSnackBar(SnackBar(content: Text(mensaje)));
   }
 
   Future<ClimaModel?> _loadClima({bool force = false}) => widget.loader != null
@@ -190,7 +205,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: RecomendacionPanel(
                       resultado: data!.recomendacion,
                       mensaje: data.mensajeReco,
-                      onGuardar: _guardarComoOutfit,
+                      onGuardar: () => _guardarComoOutfit(data.recomendacion),
                     ),
                   ),
                 ),

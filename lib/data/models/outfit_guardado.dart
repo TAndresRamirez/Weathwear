@@ -54,4 +54,9 @@ class OutfitGuardado {
       max: math.max(a.tempMax, b.tempMax),
     );
   }
+
+  /// Condiciones para las que sirven TODAS las prendas del outfit
+  Set<String> get condicionesComunes => prendas
+      .map((p) => p.condiciones.toSet())
+      .reduce((a, b) => a.intersection(b));
 }

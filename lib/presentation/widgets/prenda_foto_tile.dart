@@ -33,7 +33,13 @@ class PrendaFotoTile extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 4),
-        Text(prenda.tipo, style: Theme.of(context).textTheme.labelMedium),
+        Text(
+          prenda.tipo,
+          style: Theme.of(context).textTheme.labelMedium,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+        ),
       ],
     );
   }

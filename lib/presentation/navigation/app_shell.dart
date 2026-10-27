@@ -15,12 +15,16 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   int _index = 0;
 
-  // Cambiar la key recrea el Historial y fuerza una nueva lectura de la BD
+  // Cambiar la key recrea la pantalla y fuerza una nueva lectura de la BD
+  int _prendasVersion = 0;
   int _historialVersion = 0;
 
   void _onSelect(int i) => setState(() {
     // Solo al entrar desde otra pestaña, no al re-tocar la actual
-    if (i == 2 && _index != 2) _historialVersion++;
+    if (i != _index) {
+      if (i == 1) _prendasVersion++;
+      if (i == 2) _historialVersion++;
+    }
     _index = i;
   });
 
@@ -41,7 +45,7 @@ class _AppShellState extends State<AppShell> {
   Widget build(BuildContext context) {
     final screens = <Widget>[
       const HomeScreen(),
-      const PrendasScreen(),
+      PrendasScreen(key: ValueKey(_prendasVersion)), // ya no es const
       HistorialScreen(key: ValueKey(_historialVersion)),
     ];
 
