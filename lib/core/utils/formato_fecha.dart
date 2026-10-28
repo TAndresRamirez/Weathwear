@@ -1,15 +1,27 @@
+import 'package:weathwear/data/models/ajustes.dart';
+
 String _dos(int n) => n.toString().padLeft(2, '0');
 
-String formatearFecha(DateTime d) =>
-    '${_dos(d.day)}/${_dos(d.month)}/${d.year}';
+String formatearFecha(
+  DateTime d, {
+  FormatoFecha formato = FormatoFecha.diaMesAnio,
+}) => formato == FormatoFecha.diaMesAnio
+    ? '${_dos(d.day)}/${_dos(d.month)}/${d.year}'
+    : '${_dos(d.month)}/${_dos(d.day)}/${d.year}';
 
 String formatearHora(DateTime d) => '${_dos(d.hour)}:${_dos(d.minute)}';
 
-String formatearFechaHora(DateTime d) =>
-    '${formatearFecha(d)} ${formatearHora(d)}';
+String formatearFechaHora(
+  DateTime d, {
+  FormatoFecha formato = FormatoFecha.diaMesAnio,
+}) => '${formatearFecha(d, formato: formato)} ${formatearHora(d)}';
 
 /// "Hoy", "Ayer" o dd/MM/yyyy. [hoy] es inyectable para tests.
-String etiquetaDia(DateTime fecha, {DateTime? hoy}) {
+String etiquetaDia(
+  DateTime fecha, {
+  DateTime? hoy,
+  FormatoFecha formato = FormatoFecha.diaMesAnio,
+}) {
   final ref = hoy ?? DateTime.now();
   // En UTC para que el cambio de horario de verano no altere el conteo de días
   final dia = DateTime.utc(fecha.year, fecha.month, fecha.day);
@@ -17,7 +29,7 @@ String etiquetaDia(DateTime fecha, {DateTime? hoy}) {
   final diff = hoyDia.difference(dia).inDays;
   if (diff == 0) return 'Hoy';
   if (diff == 1) return 'Ayer';
-  return formatearFecha(fecha);
+  return formatearFecha(fecha, formato: formato);
 }
 
 const _dias = [

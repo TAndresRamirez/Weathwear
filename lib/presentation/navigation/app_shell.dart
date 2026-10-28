@@ -3,6 +3,7 @@ import 'package:weathwear/presentation/screens/historial_screen.dart';
 import 'package:weathwear/presentation/screens/home_screen.dart';
 import 'package:weathwear/presentation/screens/prendas_screen.dart';
 import 'package:weathwear/presentation/widgets/app_background.dart';
+import 'package:weathwear/presentation/widgets/configuracion_dialog.dart';
 
 // Contenedor: fondo + barra superior con engranaje + pestañas + barra inferior flotante
 class AppShell extends StatefulWidget {
@@ -28,16 +29,10 @@ class _AppShellState extends State<AppShell> {
     _index = i;
   });
 
-  // Placeholder: el contenido real se implementa en la Etapa 5
   void _abrirConfiguracion() {
     showDialog<void>(
       context: context,
-      builder: (_) => const Dialog(
-        child: Padding(
-          padding: EdgeInsets.all(24),
-          child: Text('Configuración: en proceso', textAlign: TextAlign.center),
-        ),
-      ),
+      builder: (_) => const ConfiguracionDialog(),
     );
   }
 

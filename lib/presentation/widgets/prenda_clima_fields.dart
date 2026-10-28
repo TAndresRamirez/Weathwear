@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:weathwear/domain/etl/weathwear_code_mapper.dart';
+import 'package:weathwear/core/utils/formato_unidades.dart';
+import 'package:weathwear/domain/settings/ajustes_controller.dart';
 
 /// Slider de rango de temperatura, compartido por registro y edición.
 class RangoTemperaturaField extends StatelessWidget {
@@ -24,21 +26,19 @@ class RangoTemperaturaField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final u = AjustesController.instance.ajustes.unidadTemperatura;
+    final inicio = formatearTemperatura(values.start, u, decimales: 0);
+    final fin = formatearTemperatura(values.end, u, decimales: 0);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Rango de temperatura: ${values.start.round()}°C a ${values.end.round()}°C',
-        ),
+        Text('Rango de temperatura: $inicio a $fin'),
         RangeSlider(
           values: values,
           min: minTemp,
           max: maxTemp,
           divisions: (maxTemp - minTemp).round(),
-          labels: RangeLabels(
-            '${values.start.round()}°C',
-            '${values.end.round()}°C',
-          ),
+          labels: RangeLabels(inicio, fin),
           onChanged: onChanged,
         ),
       ],

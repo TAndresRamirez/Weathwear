@@ -3,6 +3,8 @@ import 'package:weathwear/core/theme/app_theme.dart';
 import 'package:weathwear/core/utils/formato_fecha.dart';
 import 'package:weathwear/data/models/clima_model.dart';
 import 'package:weathwear/presentation/widgets/weather_icon.dart';
+import 'package:weathwear/core/utils/formato_unidades.dart';
+import 'package:weathwear/domain/settings/ajustes_controller.dart';
 
 /// Bloque superior de Hoy. [compacto] = true cuando el panel de recomendación
 /// está abierto: ícono y temperatura pasan a una fila y desaparece la fecha.
@@ -14,14 +16,18 @@ class ClimaPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedSize(
-      duration: const Duration(milliseconds: 250),
-      alignment: Alignment.topCenter,
-      child: AnimatedSwitcher(
+    // Se reconstruye al cambiar unidades en Configuración
+    return ListenableBuilder(
+      listenable: AjustesController.instance,
+      builder: (context, _) => AnimatedSize(
         duration: const Duration(milliseconds: 250),
-        child: compacto
-            ? _Compacto(key: const ValueKey('compacto'), clima: clima)
-            : _Completo(key: const ValueKey('completo'), clima: clima),
+        alignment: Alignment.topCenter,
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 250),
+          child: compacto
+              ? _Compacto(key: const ValueKey('compacto'), clima: clima)
+              : _Completo(key: const ValueKey('completo'), clima: clima),
+        ),
       ),
     );
   }
@@ -33,7 +39,8 @@ class _Completo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
+    final text = context.panelText;
+    final u = AjustesController.instance.ajustes.unidadTemperatura;
     return Column(
       children: [
         _Caja(
@@ -51,7 +58,7 @@ class _Completo extends StatelessWidget {
         const SizedBox(height: 12),
         _Caja(
           child: Text(
-            '${clima.temperatura.toStringAsFixed(1)}°C',
+            formatearTemperatura(clima.temperatura, u),
             style: text.displayMedium,
           ),
         ),
@@ -76,7 +83,8 @@ class _Compacto extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
+    final text = context.panelText;
+    final u = AjustesController.instance.ajustes.unidadTemperatura;
     return Column(
       children: [
         SizedBox(
@@ -98,7 +106,7 @@ class _Compacto extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        '${clima.temperatura.toStringAsFixed(1)}°C',
+                        formatearTemperatura(clima.temperatura, u),
                         style: text.headlineMedium,
                       ),
                       Text(
@@ -128,6 +136,7 @@ class _FilaDatos extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final a = AjustesController.instance.ajustes;
     final sensacion = clima.sensacionTermica;
     final viento = clima.vientoKmh;
     return Row(
@@ -137,7 +146,7 @@ class _FilaDatos extends StatelessWidget {
             label: 'Sensación',
             valor: sensacion == null
                 ? '--'
-                : '${sensacion.toStringAsFixed(1)}°C',
+                : formatearTemperatura(sensacion, a.unidadTemperatura),
           ),
         ),
         const SizedBox(width: 8),
@@ -151,7 +160,9 @@ class _FilaDatos extends StatelessWidget {
         Expanded(
           child: _DatoChip(
             label: 'Viento',
-            valor: viento == null ? '--' : '${viento.toStringAsFixed(0)} km/h',
+            valor: viento == null
+                ? '--'
+                : formatearViento(viento, a.unidadViento),
           ),
         ),
       ],
@@ -166,7 +177,7 @@ class _DatoChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
+    final text = context.panelText;
     return _Caja(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
       child: Column(

@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:weathwear/core/utils/formato_fecha.dart';
+import 'package:weathwear/data/models/ajustes.dart';
 
 void main() {
   final hoy = DateTime(2026, 10, 23, 15);
@@ -17,5 +18,16 @@ void main() {
 
   test('etiquetaCabecera: día de la semana y número', () {
     expect(etiquetaCabecera(DateTime(2026, 10, 23)), 'Viernes 23');
+  });
+
+  test('etiquetaDia respeta el formato mm/dd/aaaa', () {
+    expect(
+      etiquetaDia(
+        DateTime(2026, 10, 19, 10),
+        hoy: hoy,
+        formato: FormatoFecha.mesDiaAnio,
+      ),
+      '10/19/2026',
+    );
   });
 }

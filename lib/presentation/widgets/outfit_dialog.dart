@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:weathwear/data/models/outfit_guardado.dart';
 import 'package:weathwear/domain/outfits/guardar_outfit_use_case.dart';
 import 'package:weathwear/presentation/widgets/prenda_foto_tile.dart';
+import 'package:weathwear/core/utils/formato_unidades.dart';
+import 'package:weathwear/domain/settings/ajustes_controller.dart';
 
 /// Detalle de un outfit: fotos grandes, datos y acciones (usar hoy / eliminar).
 /// Al cerrarse devuelve el mensaje a mostrar en un SnackBar (o null).
@@ -87,6 +89,7 @@ class _OutfitDialogState extends State<OutfitDialog> {
     final text = Theme.of(context).textTheme;
     final rango = o.rangoTemperatura;
     final condiciones = o.condicionesComunes;
+    final u = AjustesController.instance.ajustes.unidadTemperatura;
 
     return Dialog(
       child: SingleChildScrollView(
@@ -124,7 +127,7 @@ class _OutfitDialogState extends State<OutfitDialog> {
             const SizedBox(height: 16),
             _Dato(
               'Rango de temperatura',
-              '${rango.min.round()}–${rango.max.round()}°C',
+              formatearRangoTemperatura(rango.min, rango.max, u),
             ),
             _Dato(
               'Condiciones',
@@ -141,7 +144,7 @@ class _OutfitDialogState extends State<OutfitDialog> {
               o.vecesUsado == 0
                   ? 'Sin usos aún'
                   : '${o.vecesUsado} · promedio '
-                        '${o.tempPromedioUso!.toStringAsFixed(1)}°C',
+                        '${formatearTemperatura(o.tempPromedioUso!, u)}',
             ),
             if (_error != null) ...[
               const SizedBox(height: 8),
