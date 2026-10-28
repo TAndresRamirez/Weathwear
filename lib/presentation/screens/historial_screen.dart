@@ -8,6 +8,8 @@ import 'package:weathwear/data/models/historial_entry.dart';
 import 'package:weathwear/data/models/prenda_model.dart';
 import 'package:weathwear/data/repositories/recomendacion_repository.dart';
 import 'package:weathwear/presentation/widgets/prenda_foto_tile.dart';
+import 'package:weathwear/core/utils/formato_unidades.dart';
+import 'package:weathwear/domain/settings/ajustes_controller.dart';
 
 class HistorialScreen extends StatefulWidget {
   const HistorialScreen({
@@ -32,6 +34,9 @@ class _HistorialScreenState extends State<HistorialScreen> {
   final _verExterior = ValueNotifier<bool>(false);
   Timer? _timer;
 
+  // El historial guarda un outfit por día: 4 outfits = los últimos 4 días
+  static const int _maxOutfits = 4;
+
   @override
   void initState() {
     super.initState();
@@ -48,7 +53,7 @@ class _HistorialScreenState extends State<HistorialScreen> {
   Future<List<HistorialEntry>> _load() async {
     final entries = widget.loader != null
         ? await widget.loader!()
-        : await RecomendacionRepository().getHistorial();
+        : await RecomendacionRepository().getHistorial(dias: _maxOutfits);
     if (mounted) _ajustarRotacion(entries.any((e) => e.prendas.length > 2));
     return entries;
   }
@@ -176,7 +181,7 @@ class _FilaPrendas extends StatelessWidget {
   Widget _slot(int i) => SizedBox(
     width: _tile,
     child: i < prendas.length
-        ? PrendaFotoTile(prenda: prendas[i], size: _tile)
+        ? PrendaFotoTile(prenda: prendas[i], size: _tile, sobrePanel: true)
         : null,
   );
 
@@ -206,40 +211,51 @@ class _DatosBox extends StatelessWidget {
     final cuerpo = text.bodySmall?.copyWith(color: Colors.black87);
     final titulo = text.titleSmall?.copyWith(color: Colors.black87);
 
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: context.wColors.acento,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            '${etiquetaDia(entry.fechaGeneracion)} · '
-            '${formatearHora(entry.fechaGeneracion)}',
-            style: titulo,
+    // Escucha los ajustes: el diálogo se cierra sobre esta pantalla ya montada
+    return ListenableBuilder(
+      listenable: AjustesController.instance,
+      builder: (context, _) {
+        final a = AjustesController.instance.ajustes;
+        return Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: context.wColors.acento,
+            borderRadius: BorderRadius.circular(20),
           ),
-          const SizedBox(height: 6),
-          Text(
-            '${clima.temperatura.toStringAsFixed(1)}°C · ${clima.condicion}',
-            style: cuerpo,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '${etiquetaDia(entry.fechaGeneracion, formato: a.formatoFecha)} · '
+                '${formatearHora(entry.fechaGeneracion)}',
+                style: titulo,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '${formatearTemperatura(clima.temperatura, a.unidadTemperatura)}'
+                ' · ${clima.condicion}',
+                style: cuerpo,
+              ),
+              // Nullables: vacíos en filas anteriores a la migración v3
+              if (clima.sensacionTermica != null)
+                Text(
+                  'Sensación ${formatearTemperatura(clima.sensacionTermica!, a.unidadTemperatura)}',
+                  style: cuerpo,
+                ),
+              Text(
+                'Humedad ${clima.humedad.toStringAsFixed(0)}%',
+                style: cuerpo,
+              ),
+              if (clima.vientoKmh != null)
+                Text(
+                  'Viento ${formatearViento(clima.vientoKmh!, a.unidadViento)}',
+                  style: cuerpo,
+                ),
+            ],
           ),
-          // Nullables: vacíos en filas anteriores a la migración v3
-          if (clima.sensacionTermica != null)
-            Text(
-              'Sensación ${clima.sensacionTermica!.toStringAsFixed(1)}°C',
-              style: cuerpo,
-            ),
-          Text('Humedad ${clima.humedad.toStringAsFixed(0)}%', style: cuerpo),
-          if (clima.vientoKmh != null)
-            Text(
-              'Viento ${clima.vientoKmh!.toStringAsFixed(0)} km/h',
-              style: cuerpo,
-            ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

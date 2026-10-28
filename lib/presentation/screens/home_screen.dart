@@ -15,6 +15,8 @@ import 'package:weathwear/presentation/widgets/recomendacion_panel.dart';
 import 'package:weathwear/data/models/outfit_guardado.dart';
 import 'package:weathwear/data/repositories/outfit_repository.dart';
 import 'package:weathwear/domain/outfits/guardar_outfit_use_case.dart';
+import 'package:weathwear/domain/settings/ajustes_controller.dart';
+import 'package:weathwear/data/models/ajustes.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, this.loader, this.recomendar});
@@ -47,9 +49,14 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _expandido = false;
   double _fraccionMin = 0.05; // se recalcula en build según el alto disponible
 
+  // Hoy_2 = panel de recomendación abierto al iniciar
+  bool get _abrirExpandido =>
+      AjustesController.instance.ajustes.vistaInicial == VistaInicial.hoy2;
+
   @override
   void initState() {
     super.initState();
+    _expandido = _abrirExpandido;
     _future = _loadAll();
     _sheet.addListener(_onSheetChanged);
   }
@@ -105,12 +112,14 @@ class _HomeScreenState extends State<HomeScreen> {
         DateTime.now().difference(clima.fechaHora) > const Duration(hours: 1);
     if (force || stale) {
       // EtlPipeline cierra su ApiClient en run(): uno nuevo por ejecución.
-      // En primer plano se pide GPS (y se cachea para el ETL en background).
+      // GPS solo si el usuario lo permite; si no, la última ubicación guardada.
       await EtlPipeline(
         ClimaApiClient(),
         ClimaTransformer(),
         _climaRepo,
-        coordenadas: _ubicacion.obtener,
+        coordenadas: AjustesController.instance.ajustes.usarGps
+            ? _ubicacion.obtener
+            : _ubicacion.ultimaConocida,
       ).run();
       clima = await _climaRepo.getUltimo();
     }
@@ -142,9 +151,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _refresh() async {
     final next = _loadAll(force: true);
-    // El panel se reconstruye cerrado, así que el estado vuelve a "no expandido"
+    // El panel se reconstruye en su estado inicial según el ajuste
     setState(() {
-      _expandido = false;
+      _expandido = _abrirExpandido;
       _future = next;
     });
     await next;
@@ -194,7 +203,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 DraggableScrollableSheet(
                   controller: _sheet,
-                  initialChildSize: _fraccionMin,
+                  initialChildSize: _abrirExpandido
+                      ? _fraccionMax
+                      : _fraccionMin,
                   minChildSize: _fraccionMin,
                   maxChildSize: _fraccionMax,
                   snap: true,

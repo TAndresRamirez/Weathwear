@@ -16,6 +16,7 @@ import 'package:weathwear/presentation/widgets/outfit_dialog.dart';
 import 'package:weathwear/presentation/widgets/outfit_filtro_sheet.dart';
 import 'package:weathwear/presentation/widgets/paged_grid.dart';
 import 'package:weathwear/presentation/widgets/prenda_imagen.dart';
+import 'package:weathwear/core/theme/app_theme.dart';
 
 class PrendasScreen extends StatefulWidget {
   const PrendasScreen({
@@ -298,7 +299,7 @@ class _PrendaCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
+    final text = context.panelText;
     return Card(
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
@@ -368,7 +369,7 @@ class _OutfitCard extends StatelessWidget {
                 afinidad == null
                     ? 'Afinidad --'
                     : 'Afinidad ${(afinidad! * 100).round()}%',
-                style: Theme.of(context).textTheme.labelMedium,
+                style: context.panelText.labelMedium,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),

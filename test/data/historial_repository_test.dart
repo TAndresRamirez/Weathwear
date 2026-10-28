@@ -88,4 +88,49 @@ void main() {
     expect(historial.first.similitud, 0.95); // el de las 19:00
     expect(historial.first.prendas.length, 2);
   });
+
+  test(
+    'getHistorial(dias: 4) devuelve solo los 4 días más recientes',
+    () async {
+      final idClima = await ClimaRepository().insert(
+        ClimaModel(
+          fechaHora: DateTime(2026, 10, 20, 9),
+          temperatura: 18,
+          humedad: 50,
+          condicion: 'soleado',
+        ),
+      );
+      final prendaRepo = PrendaRepository();
+      Future<PrendaModel> crear(String tipo) async {
+        final id = await prendaRepo.insert(
+          PrendaModel(
+            tipo: tipo,
+            imagenRuta: '/tmp/$tipo.jpg',
+            tempMin: 10,
+            tempMax: 30,
+            condicionAplicable: 'soleado',
+          ),
+        );
+        return (await prendaRepo.getById(id))!;
+      }
+
+      final polera = await crear('Polera');
+      final pantalon = await crear('Pantalon');
+      final repo = RecomendacionRepository();
+
+      for (var dia = 20; dia <= 24; dia++) {
+        await repo.insertOutfit(
+          idClima: idClima,
+          outfit: Outfit(superior: polera, inferior: pantalon, similitud: 0.8),
+          fecha: DateTime(2026, 10, dia, 12),
+        );
+      }
+
+      final historial = await repo.getHistorial(dias: 4);
+
+      expect(historial.length, 4);
+      expect(historial.first.fechaGeneracion, DateTime(2026, 10, 24, 12));
+      expect(historial.last.fechaGeneracion, DateTime(2026, 10, 21, 12));
+    },
+  );
 }

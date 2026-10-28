@@ -5,11 +5,11 @@ import 'package:weathwear/data/models/prenda_model.dart';
 import 'package:weathwear/data/repositories/prenda_repository.dart';
 import 'package:weathwear/domain/etl/weathwear_code_mapper.dart';
 import 'package:weathwear/domain/recommendation/prenda_categoria.dart';
-import 'package:weathwear/presentation/widgets/prenda_clima_fields.dart';
 import 'package:weathwear/presentation/widgets/app_background.dart';
+import 'package:weathwear/presentation/widgets/prenda_clima_fields.dart';
 
-/// Edita tipo, rango de temperatura y condiciones de una prenda ya guardada.
-/// Hace pop(true) si se guardaron cambios.
+/// Edita tipo, rango de temperatura y condiciones de una prenda ya guardada,
+/// o la elimina. Hace pop(true) si hubo cambios (guardados o eliminación).
 class EditarPrendaScreen extends StatefulWidget {
   const EditarPrendaScreen({super.key, required this.prenda, this.repository});
 
@@ -37,10 +37,18 @@ class _EditarPrendaScreenState extends State<EditarPrendaScreen> {
     widget.prenda.tempMax,
   );
   late final Set<String> _condiciones = widget.prenda.condiciones.toSet();
-  bool _guardando = false;
+
+  // Bloquea guardar y eliminar mientras hay una operación en curso
+  bool _ocupado = false;
+
+  void _snack(String mensaje) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(mensaje)));
+  }
 
   Future<void> _guardar() async {
-    setState(() => _guardando = true);
+    setState(() => _ocupado = true);
     try {
       await _repository.update(
         widget.prenda.copyWith(
@@ -56,13 +64,51 @@ class _EditarPrendaScreenState extends State<EditarPrendaScreen> {
       if (!mounted) return;
       Navigator.of(context).pop(true);
     } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No se pudieron guardar los cambios')),
-        );
-      }
+      _snack('No se pudieron guardar los cambios');
     } finally {
-      if (mounted) setState(() => _guardando = false);
+      if (mounted) setState(() => _ocupado = false);
+    }
+  }
+
+  // Borrado lógico (desactivar), no DELETE: Recomendacion y OutfitPrenda
+  // referencian la prenda con ON DELETE RESTRICT, y el historial debe
+  // seguir mostrando sus fotos.
+  Future<void> _eliminar() async {
+    final id = widget.prenda.idPrenda;
+    if (id == null) return;
+
+    final confirmado = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('¿Eliminar esta prenda?'),
+        content: const Text(
+          'Dejará de aparecer en tus prendas y en las recomendaciones. '
+          'Los outfits que la incluyan también se ocultarán. '
+          'El historial se conserva.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmado != true || !mounted) return;
+
+    setState(() => _ocupado = true);
+    try {
+      await _repository.desactivar(id);
+      if (!mounted) return;
+      Navigator.of(context).pop(true);
+    } catch (_) {
+      _snack('No se pudo eliminar la prenda');
+    } finally {
+      if (mounted) setState(() => _ocupado = false);
     }
   }
 
@@ -74,6 +120,13 @@ class _EditarPrendaScreenState extends State<EditarPrendaScreen> {
         appBar: AppBar(
           title: const Text('Editar prenda'),
           backgroundColor: Colors.transparent,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.delete_outline),
+              tooltip: 'Eliminar prenda',
+              onPressed: _ocupado ? null : _eliminar,
+            ),
+          ],
         ),
         body: ListView(
           padding: const EdgeInsets.all(16),
@@ -125,10 +178,10 @@ class _EditarPrendaScreenState extends State<EditarPrendaScreen> {
             ),
             const SizedBox(height: 24),
             FilledButton(
-              onPressed: _tipo == null || _condiciones.isEmpty || _guardando
+              onPressed: _tipo == null || _condiciones.isEmpty || _ocupado
                   ? null
                   : _guardar,
-              child: _guardando
+              child: _ocupado
                   ? const SizedBox(
                       width: 20,
                       height: 20,

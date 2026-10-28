@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:weathwear/core/theme/app_theme.dart';
 import 'package:weathwear/domain/recommendation/generar_recomendacion_use_case.dart';
 import 'package:weathwear/presentation/widgets/prenda_foto_tile.dart';
+import 'package:weathwear/data/models/prenda_model.dart';
 
 /// Contenido del panel deslizable: superior + inferior (+ exterior si existe).
 class RecomendacionPanel extends StatelessWidget {
@@ -18,7 +19,9 @@ class RecomendacionPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
+    // Todo el contenido está sobre el panel: texto oscuro
+    final text = context.panelText;
+    final iconColor = context.wColors.textoPanel;
     final r = resultado;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -36,6 +39,7 @@ class RecomendacionPanel extends StatelessWidget {
           if (r == null)
             Text(
               mensaje ?? 'Sin recomendación disponible',
+              style: text.bodyMedium,
               textAlign: TextAlign.center,
             )
           else ...[
@@ -50,33 +54,58 @@ class RecomendacionPanel extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                PrendaFotoTile(prenda: r.outfit.superior),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 12),
-                  child: Icon(Icons.add, size: 36),
+                PrendaFotoTile(prenda: r.outfit.superior, sobrePanel: true),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Icon(Icons.add, size: 36, color: iconColor),
                 ),
-                PrendaFotoTile(prenda: r.outfit.inferior),
+                PrendaFotoTile(prenda: r.outfit.inferior, sobrePanel: true),
               ],
             ),
-            // Sin capa exterior, el cuadro se oculta
-            if (r.outfit.exterior != null) ...[
-              const SizedBox(height: 12),
-              PrendaFotoTile(prenda: r.outfit.exterior!),
-            ],
+            const SizedBox(height: 12),
+            _FilaExterior(exterior: r.outfit.exterior, onGuardar: onGuardar),
             const SizedBox(height: 12),
             Text(
               'Afinidad: ${(r.outfit.similitud * 100).round()}%',
               style: text.bodySmall,
             ),
-            const SizedBox(height: 8),
-            FilledButton.tonalIcon(
-              onPressed: onGuardar,
-              icon: const Icon(Icons.bookmark_add_outlined),
-              label: const Text('Guardar como outfit'),
-            ),
           ],
         ],
       ),
+    );
+  }
+}
+
+/// Fila de la prenda 3: el botón de guardar queda a su izquierda y la prenda
+/// centrada. Sin prenda exterior, el botón queda solo y centrado.
+class _FilaExterior extends StatelessWidget {
+  const _FilaExterior({required this.exterior, required this.onGuardar});
+
+  final PrendaModel? exterior;
+  final VoidCallback onGuardar;
+
+  @override
+  Widget build(BuildContext context) {
+    final boton = IconButton.filledTonal(
+      onPressed: onGuardar,
+      icon: const Icon(Icons.bookmark_add_outlined),
+      tooltip: 'Guardar como outfit',
+    );
+
+    final prenda = exterior;
+    if (prenda == null) return Center(child: boton);
+
+    // Dos Expanded simétricos mantienen la prenda en el centro exacto
+    return Row(
+      children: [
+        Expanded(
+          child: Align(alignment: Alignment.centerRight, child: boton),
+        ),
+        const SizedBox(width: 12),
+        PrendaFotoTile(prenda: prenda, sobrePanel: true),
+        const SizedBox(width: 12),
+        const Expanded(child: SizedBox.shrink()),
+      ],
     );
   }
 }
