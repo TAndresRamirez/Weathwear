@@ -97,7 +97,7 @@ void main() {
 
     final r = await buildUseCase()();
 
-    expect(r.outfit.superior.tipo, 'Polera');
+    expect(r.outfit.superior?.tipo, 'Polera');
     expect(r.climaDesactualizado, false);
     final rows = await db.query('Recomendacion');
     expect(rows.length, 2);

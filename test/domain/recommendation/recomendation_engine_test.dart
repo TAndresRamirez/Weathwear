@@ -26,28 +26,33 @@ void main() {
     condicionAplicable: condicion,
   );
 
+  // Dos poleras con rangos distintos: el motor debe elegir por cercanía al rango
+  final poleraCalor = prenda('Polera', 18, 32);
+  final poleraFria = prenda('Polera', 5, 17); // manga larga / térmica
+  final chaqueta = prenda('Chaqueta', 0, 14);
+
   final prendas = [
-    prenda('Polera', 18, 32),
-    prenda('Poleron', 5, 17),
+    poleraCalor,
+    poleraFria,
     prenda('Shorts', 20, 35),
     prenda('Pantalon', 5, 22),
-    prenda('Chaqueta', 0, 14),
+    chaqueta,
   ];
 
-  test('TP-04: a 25 C elige polera + shorts y sin chaqueta', () {
+  test('TP-04: a 25 C elige polera de calor + shorts y sin chaqueta', () {
     final outfit = engine.recommend(clima(25), prendas);
 
-    expect(outfit.superior!.tipo, 'Polera');
-    expect(outfit.inferior!.tipo, 'Shorts');
+    expect(outfit.superior, same(poleraCalor));
+    expect(outfit.inferior?.tipo, 'Shorts');
     expect(outfit.exterior, isNull);
   });
 
-  test('a 8 C elige poleron + pantalon y agrega chaqueta', () {
+  test('a 8 C elige polera de frio + pantalon y agrega chaqueta', () {
     final outfit = engine.recommend(clima(8), prendas);
 
-    expect(outfit.superior!.tipo, 'Poleron');
-    expect(outfit.inferior!.tipo, 'Pantalon');
-    expect(outfit.exterior?.tipo, 'Chaqueta');
+    expect(outfit.superior, same(poleraFria));
+    expect(outfit.inferior?.tipo, 'Pantalon');
+    expect(outfit.exterior, same(chaqueta));
   });
 
   test('el puntaje de temperatura decae fuera dle rango', () {

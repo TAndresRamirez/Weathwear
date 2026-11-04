@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
@@ -9,7 +9,7 @@ import 'package:sqflite/sqflite.dart';
 // Punto unico de acceso a la base de datos local del sistema
 class SqliteHelper {
   static const String _dbName = 'weathwear.db';
-  static const int _dbVersion = 5; // v5: Poleron se fusiona con Chaqueta
+  static const int dbVersion = 6; // v6: Corrige el tipo 'Chaquetas' que escribia la migracion v5 original
 
   //Singleton: una sola instancia de esta clase en toda la app
   SqliteHelper._internal();
@@ -30,21 +30,23 @@ class SqliteHelper {
 
     return openDatabase(
       dbPath,
-      version: _dbVersion,
-      onConfigure: _onConfigure,
-      onCreate: _onCreate,
-      onUpgrade: _onUpgrade,
+      version: dbVersion,
+      onConfigure: onConfigure,
+      onCreate: onCreate,
+      onUpgrade: onUpgrade,
     );
   }
 
   //SQLite no aplica foreign keys por defecto
   //Hay que activarlas cada vez que se abre la conexion
-  Future<void> _onConfigure(Database db) async {
-    await db.execute('Pragma foreign_keys = ON');
+  @visibleForTesting
+  static Future<void> onConfigure(Database db) async {
+    await db.execute('PRAGMA foreign_keys = ON');
   }
 
   //Se ejecuta al crear el archivo .db (instalación nueva)
-  Future<void> _onCreate(Database db, int version) async {
+  @visibleForTesting
+  static Future<void> onCreate(Database db, int version) async {
     await db.execute('''
       CREATE TABLE IF NOT EXISTS Clima (
         id_clima          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -119,8 +121,13 @@ class SqliteHelper {
     _database = null;
   }
 
-  // Migra instalaciones existentes (se ejecuta una vez por versión nueva)
-  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+  // Migra instalaciones existentes (sqflite la ejecuta dentro de una transacción)
+  @visibleForTesting
+  static Future<void> onUpgrade(
+    Database db,
+    int oldVersion,
+    int newVersion,
+  ) async {
     if (oldVersion < 3) {
       await db.execute('ALTER TABLE Clima ADD COLUMN sensacion_termica REAL');
       await db.execute('ALTER TABLE Clima ADD COLUMN viento_kmh REAL');
@@ -129,16 +136,25 @@ class SqliteHelper {
     if (oldVersion < 4) {
       await crearTablasOutfit(db);
     }
-    // v4 -> v5: Poleron deja de existir como tipo y pasa a Chaqueta (exterior)
+    // v4 -> v5: Poleron pasa a Chaqueta (exterior). Los outfits que lo usaban
+    // como superior quedan inválidos, así que se borran ANTES de renombrar
+    // (CASCADE elimina también sus OutfitPrenda y OutfitUso)
     if (oldVersion < 5) {
       await db.execute('''
         DELETE FROM Outfit WHERE id_outfit IN (
           SELECT op.id_outfit FROM OutfitPrenda op
           JOIN Prenda p ON p.id_prenda = op.id_prenda
-          WHERE p.tipo IN ('Poleron', 'Polerón'))
+          WHERE lower(trim(p.tipo)) IN ('poleron', 'polerón'))
       ''');
       await db.execute(
-        "UPDATE Prenda SET tipo = 'Chaquetas' WHERE  tipo IN ('Poleron', 'Polerón')",
+        "UPDATE Prenda SET tipo = 'Chaqueta' "
+        "WHERE lower(trim(tipo)) IN ('poleron', 'polerón')",
+      );
+    }
+    // v5 -> v6: dispositivos que ya corrieron la v5 con el typo. Idempotente.
+    if (oldVersion < 6) {
+      await db.execute(
+        "UPDATE Prenda SET tipo = 'Chaqueta' WHERE tipo = 'Chaquetas'",
       );
     }
   }
