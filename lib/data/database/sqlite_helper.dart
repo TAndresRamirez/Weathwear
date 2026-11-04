@@ -9,7 +9,7 @@ import 'package:sqflite/sqflite.dart';
 // Punto unico de acceso a la base de datos local del sistema
 class SqliteHelper {
   static const String _dbName = 'weathwear.db';
-  static const int _dbVersion = 4; // <-- era 3
+  static const int _dbVersion = 5; // v5: Poleron se fusiona con Chaqueta
 
   //Singleton: una sola instancia de esta clase en toda la app
   SqliteHelper._internal();
@@ -128,6 +128,18 @@ class SqliteHelper {
     // v3 -> v4: agrega las tablas de outfits sin tocar los datos existentes
     if (oldVersion < 4) {
       await crearTablasOutfit(db);
+    }
+    // v4 -> v5: Poleron deja de existir como tipo y pasa a Chaqueta (exterior)
+    if (oldVersion < 5) {
+      await db.execute('''
+        DELETE FROM Outfit WHERE id_outfit IN (
+          SELECT op.id_outfit FROM OutfitPrenda op
+          JOIN Prenda p ON p.id_prenda = op.id_prenda
+          WHERE p.tipo IN ('Poleron', 'Polerón'))
+      ''');
+      await db.execute(
+        "UPDATE Prenda SET tipo = 'Chaquetas' WHERE  tipo IN ('Poleron', 'Polerón')",
+      );
     }
   }
 

@@ -37,16 +37,16 @@ void main() {
   test('TP-04: a 25 C elige polera + shorts y sin chaqueta', () {
     final outfit = engine.recommend(clima(25), prendas);
 
-    expect(outfit.superior.tipo, 'Polera');
-    expect(outfit.inferior.tipo, 'Shorts');
+    expect(outfit.superior!.tipo, 'Polera');
+    expect(outfit.inferior!.tipo, 'Shorts');
     expect(outfit.exterior, isNull);
   });
 
   test('a 8 C elige poleron + pantalon y agrega chaqueta', () {
     final outfit = engine.recommend(clima(8), prendas);
 
-    expect(outfit.superior.tipo, 'Poleron');
-    expect(outfit.inferior.tipo, 'Pantalon');
+    expect(outfit.superior!.tipo, 'Poleron');
+    expect(outfit.inferior!.tipo, 'Pantalon');
     expect(outfit.exterior?.tipo, 'Chaqueta');
   });
 

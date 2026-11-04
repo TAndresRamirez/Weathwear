@@ -85,6 +85,8 @@ class OutfitRepository {
       }
       final prendas = filasPrenda.map(PrendaModel.fromMap).toList()
         ..sort((a, b) => a.categoria.index.compareTo(b.categoria.index));
+      // Composición inválida (datos antiguos): se oculta en vez de romper la pantalla
+      if (!OutfitGuardado.composicionValida(prendas)) continue;
       final ultimo = o['ultimo_uso'] as String?;
       resultado.add(
         OutfitGuardado(

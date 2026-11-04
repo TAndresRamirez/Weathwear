@@ -10,7 +10,7 @@ class OutfitOrigen {
 }
 
 /// Outfit persistido (no confundir con `Outfit`, el resultado del motor).
-/// [prendas] viene ordenada: superior, inferior y, si existe, exterior.
+/// [prendas] viene ordenada: superior, inferior, entero y exterior (si existen).
 class OutfitGuardado {
   final int idOutfit;
   final DateTime fechaCreacion;
@@ -32,20 +32,45 @@ class OutfitGuardado {
     this.ultimoUso,
   });
 
-  PrendaModel get superior =>
-      prendas.firstWhere((p) => p.categoria == PrendaCategoria.superior);
+  /// Regla única de composición (la usan el caso de uso y el repositorio):
+  /// (1 superior + 1 inferior) o (1 entero), y como máximo 1 exterior.
+  static bool composicionValida(Iterable<PrendaModel> prendas) {
+    int cuantas(PrendaCategoria c) =>
+        prendas.where((p) => p.categoria == c).length;
 
-  PrendaModel get inferior =>
-      prendas.firstWhere((p) => p.categoria == PrendaCategoria.inferior);
+    final sup = cuantas(PrendaCategoria.superior);
+    final inf = cuantas(PrendaCategoria.inferior);
+    final ent = cuantas(PrendaCategoria.entero);
+    final ext = cuantas(PrendaCategoria.exterior);
 
-  PrendaModel? get exterior =>
-      prendas.where((p) => p.categoria == PrendaCategoria.exterior).firstOrNull;
+    final conPar = sup == 1 && inf == 1 && ent == 0;
+    final conEntero = ent == 1 && sup == 0 && inf == 0;
+    return (conPar || conEntero) && ext <= 1;
+  }
 
-  /// Rango de temperatura del outfit: intersección de superior e inferior
-  /// (la capa exterior es opcional y se ignora). Si no se cruzan, usa la unión.
+  PrendaModel? _primera(PrendaCategoria c) =>
+      prendas.where((p) => p.categoria == c).firstOrNull;
+
+  PrendaModel? get superior => _primera(PrendaCategoria.superior);
+  PrendaModel? get inferior => _primera(PrendaCategoria.inferior);
+  PrendaModel? get entero => _primera(PrendaCategoria.entero);
+  PrendaModel? get exterior => _primera(PrendaCategoria.exterior);
+
+  /// Prendas base (sin la capa exterior): un par, o una sola si es entero
+  List<PrendaModel> get principales =>
+      prendas.where((p) => p.categoria != PrendaCategoria.exterior).toList();
+
+  bool get esEntero => entero != null;
+
+  /// Rango de temperatura del outfit. Entero: el de la prenda. Par: intersección
+  /// de superior e inferior (la capa exterior se ignora); si no se cruzan, la unión.
   ({double min, double max}) get rangoTemperatura {
-    final a = superior;
-    final b = inferior;
+    final e = entero;
+    if (e != null) return (min: e.tempMin, max: e.tempMax);
+
+    // Composición válida garantizada: hay superior e inferior
+    final a = superior!;
+    final b = inferior!;
     final lo = math.max(a.tempMin, b.tempMin);
     final hi = math.min(a.tempMax, b.tempMax);
     if (lo <= hi) return (min: lo, max: hi);

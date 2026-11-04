@@ -1,9 +1,13 @@
 import 'package:weathwear/data/models/prenda_model.dart';
 
-// Conjunto recomendado: una prenda superior + una inferior y opcionalmente una capa exterior
+// Conjunto recomendado. Dos formas válidas:
+//  - superior + inferior, o
+//  - una prenda entera,
+// más una capa exterior opcional en ambos casos.
 class Outfit {
-  final PrendaModel superior;
-  final PrendaModel inferior;
+  final PrendaModel? superior;
+  final PrendaModel? inferior;
+  final PrendaModel? entero;
   final PrendaModel? exterior;
 
   // Puntaje promedio de las prendas incluidas
@@ -11,11 +15,23 @@ class Outfit {
   final double similitud;
 
   const Outfit({
-    required this.superior,
-    required this.inferior,
+    this.superior,
+    this.inferior,
+    this.entero,
     this.exterior,
     required this.similitud,
-  });
+  }) : assert(
+         entero != null
+             ? (superior == null && inferior == null)
+             : (superior != null && inferior != null),
+         'Un outfit es superior + inferior, o una prenda entera',
+       );
 
-  List<PrendaModel> get prendas => [superior, inferior, ?exterior];
+  bool get esEntero => entero != null;
+
+  // Prendas base (sin la capa exterior), en orden de visualización
+  List<PrendaModel> get principales => [?superior, ?inferior, ?entero];
+
+  // Orden de visualización: superior, inferior, entero, exterior
+  List<PrendaModel> get prendas => [...principales, ?exterior];
 }

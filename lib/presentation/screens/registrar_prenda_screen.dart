@@ -36,10 +36,10 @@ class _RegistrarPrendaScreenState extends State<RegistrarPrendaScreen> {
   // Rangos iniciales por tipo; el usuario los ajusta con el slider
   static const _rangosIniciales = <String, RangeValues>{
     'Polera': RangeValues(18, 32),
-    'Poleron': RangeValues(8, 18),
-    'Chaqueta': RangeValues(0, 15),
+    'Chaqueta': RangeValues(0, 18), // absorbe el rango del antiguo polerón
     'Pantalon': RangeValues(5, 30),
     'Shorts': RangeValues(20, 35),
+    'Entero': RangeValues(16, 32),
   };
 
   late final RegistrarPrendaUseCase _useCase;

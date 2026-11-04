@@ -7,8 +7,8 @@ import 'package:weathwear/domain/recommendation/prenda_categoria.dart';
 import 'package:weathwear/presentation/widgets/app_background.dart';
 import 'package:weathwear/presentation/widgets/prenda_foto_tile.dart';
 
-/// Arma un outfit a mano: una prenda superior, una inferior y, opcionalmente,
-/// una exterior. Hace pop(true) si se guardó.
+/// Arma un outfit a mano: superior + inferior, o una prenda entera, y
+/// opcionalmente una exterior. Hace pop(true) si se guardó.
 class CrearOutfitScreen extends StatefulWidget {
   const CrearOutfitScreen({super.key, this.prendasLoader, this.guardar});
 
@@ -26,7 +26,12 @@ class _CrearOutfitScreenState extends State<CrearOutfitScreen> {
   bool _guardando = false;
   PrendaModel? _superior;
   PrendaModel? _inferior;
+  PrendaModel? _entero;
   PrendaModel? _exterior;
+
+  // Superior + inferior, o una prenda entera
+  bool get _composicionCompleta =>
+      _entero != null || (_superior != null && _inferior != null);
 
   @override
   void initState() {
@@ -50,9 +55,11 @@ class _CrearOutfitScreenState extends State<CrearOutfitScreen> {
   Future<void> _guardar() async {
     setState(() => _guardando = true);
     try {
+      // Los null-aware elements omiten las categorías no elegidas
       await (widget.guardar ?? _guardarReal)([
-        _superior!,
-        _inferior!,
+        ?_superior,
+        ?_inferior,
+        ?_entero,
         ?_exterior,
       ]);
       if (mounted) Navigator.of(context).pop(true);
@@ -126,7 +133,7 @@ class _CrearOutfitScreenState extends State<CrearOutfitScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final puedeGuardar = _superior != null && _inferior != null && !_guardando;
+    final puedeGuardar = _composicionCompleta && !_guardando;
 
     return AppBackground(
       child: Scaffold(
@@ -152,6 +159,12 @@ class _CrearOutfitScreenState extends State<CrearOutfitScreen> {
         child: Text('Primero registra prendas para crear un outfit.'),
       );
     }
+
+    // La sección "Entero" solo aparece si el usuario tiene prendas enteras
+    final hayEnteros = _prendas!.any(
+      (p) => p.categoria == PrendaCategoria.entero,
+    );
+
     return Column(
       children: [
         Expanded(
@@ -162,15 +175,36 @@ class _CrearOutfitScreenState extends State<CrearOutfitScreen> {
                 'Prenda superior',
                 PrendaCategoria.superior,
                 _superior,
-                (p) => setState(() => _superior = _alternar(_superior, p)),
+                (p) => setState(() {
+                  _superior = _alternar(_superior, p);
+                  if (_superior != null) _entero = null; // excluyente
+                }),
               ),
               const SizedBox(height: 16),
               _seccion(
                 'Prenda inferior',
                 PrendaCategoria.inferior,
                 _inferior,
-                (p) => setState(() => _inferior = _alternar(_inferior, p)),
+                (p) => setState(() {
+                  _inferior = _alternar(_inferior, p);
+                  if (_inferior != null) _entero = null;
+                }),
               ),
+              if (hayEnteros) ...[
+                const SizedBox(height: 16),
+                _seccion(
+                  'Prenda entera (reemplaza superior e inferior)',
+                  PrendaCategoria.entero,
+                  _entero,
+                  (p) => setState(() {
+                    _entero = _alternar(_entero, p);
+                    if (_entero != null) {
+                      _superior = null;
+                      _inferior = null;
+                    }
+                  }),
+                ),
+              ],
               const SizedBox(height: 16),
               _seccion(
                 'Prenda exterior (opcional)',

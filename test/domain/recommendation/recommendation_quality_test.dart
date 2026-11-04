@@ -23,7 +23,7 @@ void main() {
   final chaqueta = p('Chaqueta', 0, 15, 'lluvia');
   final guardarropa = [
     p('Polera', 16, 35, 'soleado'),
-    p('Poleron', 5, 18, 'nublado'),
+    p('Polera', 5, 18, 'nublado'),
     p('Shorts', 20, 40, 'soleado'),
     p('Pantalon', -5, 24, 'nublado'),
     chaqueta,
@@ -60,10 +60,12 @@ void main() {
           (PrendaCategoria.superior, outfit.superior),
           (PrendaCategoria.inferior, outfit.inferior),
         ]) {
-          if (!hayCubierta(cat, t)) {
-            continue; // sin candidata valida no se evalua
-          }
+          if (!hayCubierta(cat, t)) continue;
           evaluados++;
+          if (elegida == null) {
+            fallos.add('$t C / $c: sin prenda ${cat.name}');
+            continue;
+          }
           if (!cubre(elegida, t)) {
             fallos.add('$t C / $c: ${elegida.tipo} fuera de su rango');
           }
@@ -89,7 +91,7 @@ void main() {
           final sup = engine.recommend(clima(t, c), guardarropa).superior;
 
           expect(
-            sup.tempMax,
+            sup!.tempMax,
             greaterThanOrEqualTo(tempMaxAnterior),
             reason: '$t C / $c: cambio a una prenda mas abrigada',
           );

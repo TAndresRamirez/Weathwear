@@ -35,7 +35,7 @@ void main() {
   final frio = _outfit(
     2,
     [
-      _p('Poleron', 5, 15, 'nublado,lluvia'),
+      _p('Polera', 5, 15, 'nublado,lluvia'),
       _p('Pantalon', 0, 12, 'nublado,lluvia'),
     ],
     usos: 1,

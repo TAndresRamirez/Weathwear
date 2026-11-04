@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Ícono a color según la condición (assets/icons/weather/<condicion>.png).
+/// Ícono a color según la condición (assets/icons/weather/condicion.png).
 /// Si falta el archivo, cae a un ícono Material para no romper la pantalla.
 class WeatherIcon extends StatelessWidget {
   const WeatherIcon({super.key, required this.condicion, required this.size});

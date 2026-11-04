@@ -2,7 +2,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:weathwear/data/database/sqlite_helper.dart';
 import 'package:weathwear/data/models/clima_model.dart';
-import 'package:weathwear/data/models/outfit_guardado.dart';
 import 'package:weathwear/data/models/prenda_model.dart';
 import 'package:weathwear/data/repositories/clima_repository.dart';
 import 'package:weathwear/data/repositories/outfit_repository.dart';

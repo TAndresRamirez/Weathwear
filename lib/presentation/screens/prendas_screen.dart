@@ -332,7 +332,7 @@ class _PrendaCard extends StatelessWidget {
   }
 }
 
-/// Fotos de la prenda superior e inferior y afinidad con el clima de hoy.
+/// Fotos de las prendas base del outfit (par o entero) y afinidad con el clima de hoy.
 class _OutfitCard extends StatelessWidget {
   const _OutfitCard({
     required this.outfit,
@@ -357,10 +357,11 @@ class _OutfitCard extends StatelessWidget {
             children: [
               Expanded(
                 child: Row(
+                  spacing:
+                      4, // un entero ocupa todo el ancho; un par, mitad y mitad
                   children: [
-                    Expanded(child: PrendaImagen(prenda: outfit.superior)),
-                    const SizedBox(width: 4),
-                    Expanded(child: PrendaImagen(prenda: outfit.inferior)),
+                    for (final p in outfit.principales)
+                      Expanded(child: PrendaImagen(prenda: p)),
                   ],
                 ),
               ),
@@ -369,7 +370,7 @@ class _OutfitCard extends StatelessWidget {
                 afinidad == null
                     ? 'Afinidad --'
                     : 'Afinidad ${(afinidad! * 100).round()}%',
-                style: context.panelText.labelMedium,
+                style: Theme.of(context).textTheme.labelMedium,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),

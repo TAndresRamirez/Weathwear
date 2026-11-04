@@ -1,7 +1,6 @@
 import 'package:weathwear/data/models/outfit_guardado.dart';
 import 'package:weathwear/data/models/prenda_model.dart';
 import 'package:weathwear/data/repositories/outfit_repository.dart';
-import 'package:weathwear/domain/recommendation/prenda_categoria.dart';
 
 class OutfitException implements Exception {
   final String message;
@@ -32,14 +31,10 @@ class GuardarOutfitUseCase {
       throw const OutfitException('Hay prendas repetidas en el outfit');
     }
 
-    int cuantas(PrendaCategoria c) =>
-        prendas.where((p) => p.categoria == c).length;
-    if (cuantas(PrendaCategoria.superior) != 1 ||
-        cuantas(PrendaCategoria.inferior) != 1 ||
-        cuantas(PrendaCategoria.exterior) > 1) {
+    if (!OutfitGuardado.composicionValida(prendas)) {
       throw const OutfitException(
-        'Un outfit lleva una prenda superior, una inferior y, '
-        'opcionalmente, una exterior',
+        'Un outfit lleva una prenda superior y una inferior, o una prenda '
+        'entera, y opcionalmente una exterior',
       );
     }
 

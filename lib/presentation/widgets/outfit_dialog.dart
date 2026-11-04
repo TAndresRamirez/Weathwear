@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:weathwear/data/models/outfit_guardado.dart';
 import 'package:weathwear/domain/outfits/guardar_outfit_use_case.dart';
-import 'package:weathwear/presentation/widgets/prenda_foto_tile.dart';
+import 'package:weathwear/presentation/widgets/outfit_prendas_view.dart';
 import 'package:weathwear/core/utils/formato_unidades.dart';
 import 'package:weathwear/domain/settings/ajustes_controller.dart';
 
@@ -109,21 +109,13 @@ class _OutfitDialogState extends State<OutfitDialog> {
               ],
             ),
             const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                PrendaFotoTile(prenda: o.superior, size: 112),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 8),
-                  child: Icon(Icons.add, size: 28),
-                ),
-                PrendaFotoTile(prenda: o.inferior, size: 112),
-              ],
+            Center(
+              child: OutfitPrendasView(
+                principales: o.principales,
+                exterior: o.exterior,
+                size: 112,
+              ),
             ),
-            if (o.exterior != null) ...[
-              const SizedBox(height: 12),
-              Center(child: PrendaFotoTile(prenda: o.exterior!, size: 112)),
-            ],
             const SizedBox(height: 16),
             _Dato(
               'Rango de temperatura',

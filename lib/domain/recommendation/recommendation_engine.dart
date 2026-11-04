@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:weathwear/data/models/clima_model.dart';
 import 'package:weathwear/data/models/prenda_model.dart';
 import 'package:weathwear/domain/recommendation/outfit.dart';
@@ -28,29 +30,66 @@ class RecommendationEngine {
   Outfit recommend(ClimaModel clima, List<PrendaModel> prendas) {
     final superior = _mejor(clima, prendas, PrendaCategoria.superior);
     final inferior = _mejor(clima, prendas, PrendaCategoria.inferior);
+    final entero = _mejor(clima, prendas, PrendaCategoria.entero);
 
-    if (superior == null || inferior == null) {
+    // El par superior+inferior compite como una unidad contra la prenda
+    // entera: promedio de puntajes y peor distancia térmica de las dos.
+    final par = superior != null && inferior != null
+        ? (
+            score: (superior.score + inferior.score) / 2,
+            distancia: math.max(superior.distancia, inferior.distancia),
+          )
+        : null;
+
+    if (par == null && entero == null) {
       throw const RecommendationException(
-        'Se necesita al menos una prenda superior y una inferior',
+        'Se necesita una prenda entera, o una superior y una inferior',
       );
     }
 
+    // Mismo criterio que _mejor: primero adecuación térmica, luego puntaje.
+    // Ante empate gana el par (la comparación es estricta).
+    final _Candidato? enteroElegido =
+        entero != null &&
+            (par == null ||
+                _mejorQue(
+                  entero.distancia,
+                  entero.score,
+                  par.distancia,
+                  par.score,
+                ))
+        ? entero
+        : null;
+
     // La capa exterior solo se incluye si realmente calza con el clima actual
     final exterior = _mejor(clima, prendas, PrendaCategoria.exterior);
-    final incluirExterior =
-        exterior != null && exterior.score >= umbralExterior;
+    final capa = exterior != null && exterior.score >= umbralExterior
+        ? exterior
+        : null;
 
-    final scores = [
-      superior.score,
-      inferior.score,
-      if (incluirExterior) exterior.score,
-    ];
+    if (enteroElegido != null) {
+      return Outfit(
+        entero: enteroElegido.prenda,
+        exterior: capa?.prenda,
+        similitud: _promedio([
+          enteroElegido.score,
+          if (capa != null) capa.score,
+        ]),
+      );
+    }
 
+    // Sin entero elegido, par != null está garantizado por el throw anterior
+    final sup = superior!;
+    final inf = inferior!;
     return Outfit(
-      superior: superior.prenda,
-      inferior: inferior.prenda,
-      exterior: incluirExterior ? exterior.prenda : null,
-      similitud: scores.reduce((a, b) => a + b) / scores.length,
+      superior: sup.prenda,
+      inferior: inf.prenda,
+      exterior: capa?.prenda,
+      similitud: _promedio([
+        sup.score,
+        inf.score,
+        if (capa != null) capa.score,
+      ]),
     );
   }
 
@@ -115,7 +154,13 @@ class RecommendationEngine {
     return mejor;
   }
 
-  bool _supera(_Candidato a, _Candidato b) => a.distancia != b.distancia
-      ? a.distancia < b.distancia
-      : a.score > b.score;
+  bool _supera(_Candidato a, _Candidato b) =>
+      _mejorQue(a.distancia, a.score, b.distancia, b.score);
+
+  double _promedio(List<double> valores) =>
+      valores.reduce((a, b) => a + b) / valores.length;
+
+  // Menor distancia térmica primero; a igual distancia, mayor puntaje
+  bool _mejorQue(double distA, double scoreA, double distB, double scoreB) =>
+      distA != distB ? distA < distB : scoreA > scoreB;
 }
