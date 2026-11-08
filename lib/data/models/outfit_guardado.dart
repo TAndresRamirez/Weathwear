@@ -7,7 +7,8 @@ class OutfitOrigen {
   OutfitOrigen._();
   static const String recomendacion = 'recomendacion';
   static const String manual = 'manual';
-  static const String foto = 'foto'; // creado al registrar un uso desde foto (RF-10)
+  static const String foto =
+      'foto'; // creado al registrar un uso desde foto (RF-10)
 }
 
 /// Outfit persistido (no confundir con `Outfit`, el resultado del motor).

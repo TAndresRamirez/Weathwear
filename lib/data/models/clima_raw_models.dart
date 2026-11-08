@@ -65,9 +65,9 @@ class ClimaRawModels {
           valor(codigos, i) == null) {
         continue;
       }
-      final diferencia = DateTime.parse(
-        tiempos[i] as String,
-      ).difference(objetivo).abs();
+      final diferencia = DateTime.parse(tiempos[i] as String)
+          .difference(objetivo)
+          .abs();
       if (menorDiferencia == null || diferencia < menorDiferencia) {
         mejor = i;
         menorDiferencia = diferencia;

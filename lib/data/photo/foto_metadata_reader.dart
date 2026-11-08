@@ -27,7 +27,8 @@ class FotoMetadataReader {
   // Tags EXIF estándar
   static const int _tagDateTimeOriginal = 0x9003;
   static const int _tagDateTimeDigitized = 0x9004;
-  static const int _tagDateTime = 0x0132; // fecha de última edición, último recurso
+  static const int _tagDateTime =
+      0x0132; // fecha de última edición, último recurso
   static const int _tagGpsLatRef = 0x0001;
   static const int _tagGpsLat = 0x0002;
   static const int _tagGpsLonRef = 0x0003;

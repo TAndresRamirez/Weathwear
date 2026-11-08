@@ -115,27 +115,32 @@ void main() {
   });
 
   group('proponer (RF-10)', () {
-    test('polera arriba y pantalón abajo: propone ambas, sin exterior', () async {
-      final polera = await prenda('Polera');
-      final pantalon = await prenda('Pantalon');
-      await prenda('Shorts');
+    test(
+      'polera arriba y pantalón abajo: propone ambas, sin exterior',
+      () async {
+        final polera = await prenda('Polera');
+        final pantalon = await prenda('Pantalon');
+        await prenda('Shorts');
 
-      final p = await crear([
-        _r('Polera'),
-        _r('Pantalon'),
-        _r('Polera'),
-      ]).proponer('foto.jpg');
+        final p = await crear([_r('Polera'), _r('Pantalon'), _r('Polera')])
+            .proponer('foto.jpg');
 
-      expect(p.esEntero, isFalse);
-      expect(p.slots[PrendaCategoria.superior]!.propuesta!.idPrenda,
-          polera.idPrenda);
-      final inferior = p.slots[PrendaCategoria.inferior]!;
-      expect(inferior.propuesta!.idPrenda, pantalon.idPrenda);
-      expect(inferior.requiereConfirmacion, isFalse);
-      expect(inferior.candidatas.length, 2); // el Shorts queda como alternativa
-      expect(p.slots[PrendaCategoria.exterior]!.propuesta, isNull);
-      expect(p.clima.clima.temperatura, 21);
-    });
+        expect(p.esEntero, isFalse);
+        expect(
+          p.slots[PrendaCategoria.superior]!.propuesta!.idPrenda,
+          polera.idPrenda,
+        );
+        final inferior = p.slots[PrendaCategoria.inferior]!;
+        expect(inferior.propuesta!.idPrenda, pantalon.idPrenda);
+        expect(inferior.requiereConfirmacion, isFalse);
+        expect(
+          inferior.candidatas.length,
+          2,
+        ); // el Shorts queda como alternativa
+        expect(p.slots[PrendaCategoria.exterior]!.propuesta, isNull);
+        expect(p.clima.clima.temperatura, 21);
+      },
+    );
 
     test('mismo tipo: propone la prenda más usada', () async {
       final poleraA = await prenda('Polera');
@@ -150,38 +155,40 @@ void main() {
         fecha: DateTime(2026, 11, 1),
       );
 
-      final p = await crear([
-        _r('Polera'),
-        _r('Pantalon'),
-        _r('Polera'),
-      ]).proponer('foto.jpg');
+      final p = await crear([_r('Polera'), _r('Pantalon'), _r('Polera')])
+          .proponer('foto.jpg');
 
       // poleraB es más reciente, pero poleraA tiene un uso
-      expect(p.slots[PrendaCategoria.superior]!.propuesta!.idPrenda,
-          poleraA.idPrenda);
-      expect(p.slots[PrendaCategoria.superior]!.candidatas.last.idPrenda,
-          poleraB.idPrenda);
+      expect(
+        p.slots[PrendaCategoria.superior]!.propuesta!.idPrenda,
+        poleraA.idPrenda,
+      );
+      expect(
+        p.slots[PrendaCategoria.superior]!.candidatas.last.idPrenda,
+        poleraB.idPrenda,
+      );
     });
 
-    test('chaqueta arriba: exterior propuesto y superior por confirmar',
-        () async {
-      final chaqueta = await prenda('Chaqueta');
-      await prenda('Polera');
-      await prenda('Pantalon');
+    test(
+      'chaqueta arriba: exterior propuesto y superior por confirmar',
+      () async {
+        final chaqueta = await prenda('Chaqueta');
+        await prenda('Polera');
+        await prenda('Pantalon');
 
-      final p = await crear([
-        _r('Chaqueta'),
-        _r('Pantalon'),
-        _r('Chaqueta'),
-      ]).proponer('foto.jpg');
+        final p = await crear([_r('Chaqueta'), _r('Pantalon'), _r('Chaqueta')])
+            .proponer('foto.jpg');
 
-      expect(p.slots[PrendaCategoria.exterior]!.propuesta!.idPrenda,
-          chaqueta.idPrenda);
-      final superior = p.slots[PrendaCategoria.superior]!;
-      expect(superior.propuesta, isNotNull); // la más probable
-      expect(superior.deteccion, isNull);
-      expect(superior.requiereConfirmacion, isTrue);
-    });
+        expect(
+          p.slots[PrendaCategoria.exterior]!.propuesta!.idPrenda,
+          chaqueta.idPrenda,
+        );
+        final superior = p.slots[PrendaCategoria.superior]!;
+        expect(superior.propuesta, isNotNull); // la más probable
+        expect(superior.deteccion, isNull);
+        expect(superior.requiereConfirmacion, isTrue);
+      },
+    );
 
     test('entero con confianza suficiente activa el modo entero', () async {
       final vestido = await prenda('Entero');
@@ -192,8 +199,10 @@ void main() {
       ]).proponer('foto.jpg');
 
       expect(p.esEntero, isTrue);
-      expect(p.slots[PrendaCategoria.entero]!.propuesta!.idPrenda,
-          vestido.idPrenda);
+      expect(
+        p.slots[PrendaCategoria.entero]!.propuesta!.idPrenda,
+        vestido.idPrenda,
+      );
     });
 
     test('baja confianza: propone igual pero pide confirmación', () async {
@@ -209,11 +218,8 @@ void main() {
     });
 
     test('sin prendas de la categoría: propuesta null', () async {
-      final p = await crear([
-        _r('Polera'),
-        _r('Pantalon'),
-        _r('Polera'),
-      ]).proponer('foto.jpg');
+      final p = await crear([_r('Polera'), _r('Pantalon'), _r('Polera')])
+          .proponer('foto.jpg');
       expect(p.slots[PrendaCategoria.superior]!.propuesta, isNull);
       expect(p.slots[PrendaCategoria.superior]!.candidatas, isEmpty);
     });
@@ -225,10 +231,8 @@ void main() {
       final polera = await prenda('Polera');
       final pantalon = await prenda('Pantalon');
 
-      final r = await crear(const []).registrar(
-        clima: climaFoto,
-        prendas: [polera, pantalon],
-      );
+      final r = await crear(const [])
+          .registrar(clima: climaFoto, prendas: [polera, pantalon]);
 
       expect(r.outfitNuevo, isTrue);
       expect(r.usoRegistrado, isTrue);
@@ -245,10 +249,8 @@ void main() {
         idsPrenda: [polera.idPrenda!, pantalon.idPrenda!],
       );
 
-      final r = await crear(const []).registrar(
-        clima: climaFoto,
-        prendas: [pantalon, polera],
-      );
+      final r = await crear(const [])
+          .registrar(clima: climaFoto, prendas: [pantalon, polera]);
       expect(r.idOutfit, id);
       expect(r.outfitNuevo, isFalse);
       expect((await outfitRepo.getAll()).length, 1);

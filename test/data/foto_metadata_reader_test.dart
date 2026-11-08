@@ -42,10 +42,7 @@ void main() {
     test('usa DateTime (0x0132) si no hay DateTimeOriginal', () {
       final exif = img.ExifData();
       exif.imageIfd[0x0132] = img.IfdValueAscii('2026:10:01 08:00:00');
-      expect(
-        FotoMetadataReader.fechaDesdeExif(exif),
-        DateTime(2026, 10, 1, 8),
-      );
+      expect(FotoMetadataReader.fechaDesdeExif(exif), DateTime(2026, 10, 1, 8));
     });
 
     test('convierte GPS grados/min/seg a decimal con signo S/W', () {

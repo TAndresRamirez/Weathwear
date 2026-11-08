@@ -12,6 +12,7 @@ import 'package:weathwear/domain/recommendation/recommendation_engine.dart';
 import 'package:weathwear/presentation/screens/crear_outfit_screen.dart';
 import 'package:weathwear/presentation/screens/editar_prenda_screen.dart';
 import 'package:weathwear/presentation/screens/registrar_prenda_screen.dart';
+import 'package:weathwear/presentation/screens/registrar_uso_foto_screen.dart';
 import 'package:weathwear/presentation/widgets/outfit_dialog.dart';
 import 'package:weathwear/presentation/widgets/outfit_filtro_sheet.dart';
 import 'package:weathwear/presentation/widgets/paged_grid.dart';
@@ -114,6 +115,20 @@ class _PrendasScreenState extends State<PrendasScreen> {
     if (mounted) _reload();
   }
 
+  // RF-10: registrar lo que se usó a partir de una foto puesta
+  Future<void> _abrirUsoFoto() async {
+    setState(() => _menuAbierto = false);
+    final mensaje = await Navigator.of(context).push<String>(
+      MaterialPageRoute(builder: (_) => const RegistrarUsoFotoScreen()),
+    );
+    if (!mounted) return;
+    if (mensaje != null) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(mensaje)));
+    }
+    _reload(); // el uso cambia "más usados" y puede crear un outfit
+  }
+
   Future<void> _editar(PrendaModel prenda) async {
     await Navigator.of(context).push<bool>(
       MaterialPageRoute(builder: (_) => EditarPrendaScreen(prenda: prenda)),
@@ -179,6 +194,13 @@ class _PrendasScreenState extends State<PrendasScreen> {
                       onPressed: _abrirCrearOutfit,
                       icon: const Icon(Icons.dashboard_customize_outlined),
                       label: const Text('Crear outfit'),
+                    ),
+                    const SizedBox(height: 12),
+                    FloatingActionButton.extended(
+                      heroTag: 'fab_uso_foto',
+                      onPressed: _abrirUsoFoto,
+                      icon: const Icon(Icons.add_a_photo_outlined),
+                      label: const Text('Uso desde foto'),
                     ),
                     const SizedBox(height: 12),
                   ],

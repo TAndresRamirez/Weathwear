@@ -5,7 +5,7 @@ import 'package:weathwear/data/repositories/prenda_repository.dart';
 import 'package:weathwear/domain/outfits/guardar_outfit_use_case.dart';
 import 'package:weathwear/domain/recommendation/prenda_categoria.dart';
 import 'package:weathwear/presentation/widgets/app_background.dart';
-import 'package:weathwear/presentation/widgets/prenda_foto_tile.dart';
+import 'package:weathwear/presentation/widgets/prenda_selector.dart';
 
 /// Arma un outfit a mano: superior + inferior, o una prenda entera, y
 /// opcionalmente una exterior. Hace pop(true) si se guardó.
@@ -87,49 +87,14 @@ class _CrearOutfitScreenState extends State<CrearOutfitScreen> {
     PrendaCategoria categoria,
     PrendaModel? seleccionada,
     ValueChanged<PrendaModel> onTap,
-  ) {
-    final lista = _prendas!
+  ) => PrendaSelector(
+    titulo: titulo,
+    prendas: _prendas!
         .where((p) => p.categoria == categoria)
-        .toList(growable: false);
-    final primario = Theme.of(context).colorScheme.primary;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(titulo, style: Theme.of(context).textTheme.titleSmall),
-        const SizedBox(height: 8),
-        if (lista.isEmpty)
-          const Text('No tienes prendas de este tipo.')
-        else
-          SizedBox(
-            height: 132,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: lista.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 8),
-              itemBuilder: (_, i) {
-                final p = lista[i];
-                final activa = seleccionada?.idPrenda == p.idPrenda;
-                return GestureDetector(
-                  onTap: () => onTap(p),
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(
-                        width: 3,
-                        color: activa ? primario : Colors.transparent,
-                      ),
-                    ),
-                    child: PrendaFotoTile(prenda: p, size: 96),
-                  ),
-                );
-              },
-            ),
-          ),
-      ],
-    );
-  }
+        .toList(growable: false),
+    seleccionada: seleccionada,
+    onTap: onTap,
+  );
 
   @override
   Widget build(BuildContext context) {

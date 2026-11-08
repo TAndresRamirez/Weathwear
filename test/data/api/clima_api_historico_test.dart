@@ -105,8 +105,7 @@ void main() {
     test('todas las horas null -> ClimaApiParseException', () async {
       final client = ClimaApiClient(
         httpClient: MockClient(
-          (_) async =>
-              http.Response(_hourly(temps: [null, null, null]), 200),
+          (_) async => http.Response(_hourly(temps: [null, null, null]), 200),
         ),
       );
       expect(
