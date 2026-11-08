@@ -19,8 +19,8 @@ class EtlPipeline {
     this._apiClient,
     this._transformer,
     this._repository, {
-    Future<Coordenadas> Function()? coordenadas,
-  }) : _coordenadas = coordenadas;
+    this._coordenadas,
+  });
 
   Future<EtlResult> run() async {
     final stopwatch = Stopwatch()..start();
@@ -36,7 +36,7 @@ class EtlPipeline {
       await _repository.insert(clima);
       stopwatch.stop();
       return EtlResult.ok(stopwatch.elapsed);
-    } on ClimaApiExeption catch (e) {
+    } on ClimaApiException catch (e) {
       stopwatch.stop();
       return EtlResult.failure(stopwatch.elapsed, e.toString());
     } finally {

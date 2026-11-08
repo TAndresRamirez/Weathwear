@@ -1,5 +1,6 @@
 // ignore_for_file: avoid_print
-//temporal, validacion api Open-Meteo
+// Prueba de humo manual contra la API real de Open-Meteo (no corre en CI).
+// Uso: dart run tool/manual_api_test.dart
 import 'package:weathwear/data/api/clima_api_client.dart';
 import 'package:weathwear/data/api/clima_api_exception.dart';
 
@@ -13,9 +14,11 @@ Future<void> main() async {
     print('Extraccion exitosa');
     print('timestamp: ${clima.timestamp}');
     print('temperature: ${clima.temperature}');
+    print('apparentTemperature: ${clima.apparentTermperature}');
     print('relativeHumidity: ${clima.relativeHumidity}');
+    print('windSpeed: ${clima.windSpeed}');
     print('weatherCode: ${clima.weatherCode}');
-  } on ClimaApiExeption catch (e) {
+  } on ClimaApiException catch (e) {
     print('Error controlado: $e');
   } finally {
     apiClient.dispose();
