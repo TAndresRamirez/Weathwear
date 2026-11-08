@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:image/image.dart' as img;
@@ -12,6 +13,12 @@ class ClassificationResult {
   @override
   String toString() => '$label (${(confidence * 100).toStringAsFixed(1)})';
 }
+
+/// Franja horizontal de la foto, en fracciones de la altura (0 = borde superior).
+typedef ZonaVertical = ({double desde, double hasta});
+
+// Tensor de entrada [1, 224, 224, 3]
+typedef _Tensor = List<List<List<List<double>>>>;
 
 class ClassifierException implements Exception {
   final String message;
@@ -65,7 +72,61 @@ class ClothingClassifier {
       );
     }
 
-    final input = _preprocess(decoded);
+    return _inferir(_preprocess(decoded));
+  }
+
+  /// Clasifica varias franjas de una misma foto (RF-10: zona superior/inferior).
+  /// Decodificar y recortar una foto de cámara (12 MP) puede tardar cerca de un segundo, así que se
+  /// hace en otro isolate para no congelar la UI; la inferencia queda aquí
+  /// porque el Interpreter no se puede enviar entre isolates.
+  Future<List<ClassificationResult>> classifyZonas(
+    String imagePath,
+    List<ZonaVertical> zonas,
+  ) async {
+    if (!isLoaded) {
+      throw const ClassifierException('Llama a load() antes de clasificar');
+    }
+    final tensores = await _prepararEnIsolate(imagePath, zonas);
+    if (tensores == null) {
+      throw ClassifierException(
+        'Imagen invalida o formato no soportado: $imagePath',
+      );
+    }
+    return [for (final t in tensores) _inferir(t)];
+  }
+
+  // Estático: así el closure de Isolate.run no captura `this` (el Interpreter)
+  static Future<List<_Tensor>?> _prepararEnIsolate(
+    String path,
+    List<ZonaVertical> zonas,
+  ) => Isolate.run(() => _prepararZonas(path, zonas));
+
+  static List<_Tensor>? _prepararZonas(String path, List<ZonaVertical> zonas) {
+    final decoded = img.decodeImage(File(path).readAsBytesSync());
+    if (decoded == null) return null;
+    // El decoder no aplica la orientación EXIF: sin esto una foto vertical
+    // llega acostada y "arriba/abajo" no corresponden al cuerpo.
+    final orientada = img.bakeOrientation(decoded);
+    // Se achica antes de recortar; el modelo igual trabaja a 224x224
+    final base = orientada.height > 800
+        ? img.copyResize(orientada, height: 800)
+        : orientada;
+
+    return [
+      for (final z in zonas)
+        _preprocess(
+          img.copyCrop(
+            base,
+            x: 0,
+            y: (z.desde * base.height).round(),
+            width: base.width,
+            height: ((z.hasta - z.desde) * base.height).round(),
+          ),
+        ),
+    ];
+  }
+
+  ClassificationResult _inferir(_Tensor input) {
     final output = [List<double>.filled(_labels.length, 0.0)];
     _interpreter!.run(input, output);
 
@@ -82,7 +143,7 @@ class ClothingClassifier {
   }
 
   // Redimension a 224x224 y normaliza cada canal a [-1,1]
-  List<List<List<List<double>>>> _preprocess(img.Image image) {
+  static _Tensor _preprocess(img.Image image) {
     final resized = img.copyResize(
       image,
       width: _inputSize,

@@ -131,6 +131,19 @@ class OutfitRepository {
     });
   }
 
+  /// Veces que se usó cada prenda (id_prenda -> usos), contando los usos de
+  /// todos los outfits que la incluyen. Ordena las propuestas del RF-10.
+  Future<Map<int, int>> usosPorPrenda() async {
+    final db = await _dbHelper.database;
+    final rows = await db.rawQuery('''
+      SELECT op.id_prenda, COUNT(*) AS usos
+      FROM OutfitUso u
+      JOIN OutfitPrenda op ON op.id_outfit = u.id_outfit
+      GROUP BY op.id_prenda
+    ''');
+    return {for (final r in rows) r['id_prenda'] as int: r['usos'] as int};
+  }
+
   // ON DELETE CASCADE borra también sus prendas asociadas y sus usos
   Future<int> eliminar(int idOutfit) async {
     final db = await _dbHelper.database;

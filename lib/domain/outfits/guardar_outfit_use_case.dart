@@ -19,6 +19,16 @@ class GuardarOutfitUseCase {
     List<PrendaModel> prendas, {
     String origen = OutfitOrigen.manual,
   }) async {
+    final ids = validar(prendas);
+    if (await _repo.buscarIdPorPrendas(ids) != null) {
+      throw const OutfitException('Este outfit ya está guardado');
+    }
+    return _repo.insert(idsPrenda: ids.toList(), origen: origen);
+  }
+
+  /// Valida que [prendas] formen un outfit y retorna sus ids.
+  /// Estático para reutilizarlo al registrar un uso desde foto (RF-10).
+  static Set<int> validar(List<PrendaModel> prendas) {
     final ids = <int>{};
     for (final p in prendas) {
       final id = p.idPrenda;
@@ -37,10 +47,6 @@ class GuardarOutfitUseCase {
         'entera, y opcionalmente una exterior',
       );
     }
-
-    if (await _repo.buscarIdPorPrendas(ids) != null) {
-      throw const OutfitException('Este outfit ya está guardado');
-    }
-    return _repo.insert(idsPrenda: ids.toList(), origen: origen);
+    return ids;
   }
 }

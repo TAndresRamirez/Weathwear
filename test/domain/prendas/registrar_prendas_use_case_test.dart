@@ -18,6 +18,14 @@ class _FakeClassifier implements ClothingClassifier {
   Future<ClassificationResult> classify(String imagePath) async =>
       ClassificationResult(label: 'Polera', confidence: confidence);
   @override
+  Future<List<ClassificationResult>> classifyZonas(
+    String imagePath,
+    List<ZonaVertical> zonas,
+  ) async => [
+    for (final _ in zonas)
+      ClassificationResult(label: 'Polera', confidence: confidence),
+  ];
+  @override
   void dispose() {}
 }
 
