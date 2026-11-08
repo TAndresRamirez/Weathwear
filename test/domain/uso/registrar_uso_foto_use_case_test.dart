@@ -14,11 +14,14 @@ import 'package:weathwear/domain/recommendation/prenda_categoria.dart';
 import 'package:weathwear/domain/uso/obtener_clima_foto_use_case.dart';
 import 'package:weathwear/domain/uso/registrar_uso_foto_use_case.dart';
 import 'package:weathwear/domain/vision/clothing_classifier.dart';
+import 'package:weathwear/domain/vision/color_histograma.dart';
 
-// Devuelve una detección por zona, en el orden superior, inferior, cuerpo
+// Devuelve una detección por zona, en el orden superior, inferior, cuerpo.
+// [hist]: histograma de color por zona (vacío = sin información de color)
 class _FakeClassifier implements ClothingClassifier {
-  _FakeClassifier(this.porZona);
+  _FakeClassifier(this.porZona, this.hist);
   final List<ClassificationResult> porZona;
+  final List<List<double>> hist;
 
   @override
   bool get isLoaded => true;
@@ -27,16 +30,23 @@ class _FakeClassifier implements ClothingClassifier {
   @override
   Future<ClassificationResult> classify(String imagePath) async => porZona[0];
   @override
-  Future<List<ClassificationResult>> classifyZonas(
+  Future<List<ZonaClasificada>> classifyZonas(
     String imagePath,
     List<ZonaVertical> zonas,
-  ) async => porZona;
+  ) async => [
+    for (var i = 0; i < porZona.length; i++)
+      ZonaClasificada(porZona[i], i < hist.length ? hist[i] : const []),
+  ];
   @override
   void dispose() {}
 }
 
 ClassificationResult _r(String label, [double conf = 0.9]) =>
     ClassificationResult(label: label, confidence: conf);
+
+// Histograma "puro": todo el peso en un bin
+List<double> _h(int bin) =>
+    List<double>.filled(ColorHistograma.longitud, 0)..[bin] = 1;
 
 void main() {
   setUpAll(() {
@@ -50,18 +60,22 @@ void main() {
   late ClimaFoto climaFoto;
   final fechaFoto = DateTime(2026, 11, 5, 14, 10);
 
-  RegistrarUsoFotoUseCase crear(List<ClassificationResult> det) =>
-      RegistrarUsoFotoUseCase(
-        _FakeClassifier(det),
-        prendaRepo: prendaRepo,
-        outfitRepo: outfitRepo,
-        obtenerClima: (_) async => climaFoto,
-      );
+  RegistrarUsoFotoUseCase crear(
+    List<ClassificationResult> det, {
+    List<List<double>> histZonas = const [],
+    Map<String, List<double>> histPrendas = const {},
+  }) => RegistrarUsoFotoUseCase(
+    _FakeClassifier(det, histZonas),
+    prendaRepo: prendaRepo,
+    outfitRepo: outfitRepo,
+    obtenerClima: (_) async => climaFoto,
+    histogramasPrendas: (_) async => histPrendas,
+  );
 
-  Future<PrendaModel> prenda(String tipo) async {
+  Future<PrendaModel> prenda(String tipo, {String? ruta}) async {
     final p = PrendaModel(
       tipo: tipo,
-      imagenRuta: '/tmp/$tipo.jpg',
+      imagenRuta: ruta ?? '/tmp/$tipo.jpg',
       tempMin: 5,
       tempMax: 25,
       condicionAplicable: 'despejado',
@@ -222,6 +236,62 @@ void main() {
           .proponer('foto.jpg');
       expect(p.slots[PrendaCategoria.superior]!.propuesta, isNull);
       expect(p.slots[PrendaCategoria.superior]!.candidatas, isEmpty);
+    });
+  });
+
+  group('proponer: color', () {
+    test('entre dos poleras propone la de color más parecido a la zona, '
+        'aunque la otra sea más usada', () async {
+      final roja = await prenda('Polera', ruta: '/tmp/roja.jpg');
+      final azul = await prenda('Polera', ruta: '/tmp/azul.jpg');
+      final pantalon = await prenda('Pantalon');
+      final idOutfit = await outfitRepo.insert(
+        idsPrenda: [roja.idPrenda!, pantalon.idPrenda!],
+      );
+      await outfitRepo.registrarUso(
+        idOutfit: idOutfit,
+        idClima: climaFoto.clima.idClima!,
+        fecha: DateTime(2026, 11, 1),
+      );
+
+      final p = await crear(
+        [_r('Polera'), _r('Pantalon'), _r('Polera')],
+        histZonas: [_h(10), _h(50), _h(10)], // la zona superior es "azul"
+        histPrendas: {
+          '/tmp/roja.jpg': _h(0),
+          '/tmp/azul.jpg': _h(10),
+          '/tmp/Pantalon.jpg': _h(50),
+        },
+      ).proponer('foto.jpg');
+
+      final superior = p.slots[PrendaCategoria.superior]!;
+      expect(superior.propuesta!.idPrenda, azul.idPrenda);
+      expect(superior.similitudColor, 1.0);
+      expect(superior.candidatas.last.idPrenda, roja.idPrenda);
+    });
+
+    test('sin histograma de la prenda vuelve a ordenar por uso', () async {
+      final a = await prenda('Polera', ruta: '/tmp/a.jpg');
+      final b = await prenda('Polera', ruta: '/tmp/b.jpg');
+      final pantalon = await prenda('Pantalon');
+      final idOutfit = await outfitRepo.insert(
+        idsPrenda: [a.idPrenda!, pantalon.idPrenda!],
+      );
+      await outfitRepo.registrarUso(
+        idOutfit: idOutfit,
+        idClima: climaFoto.clima.idClima!,
+        fecha: DateTime(2026, 11, 1),
+      );
+
+      final p = await crear(
+        [_r('Polera'), _r('Pantalon'), _r('Polera')],
+        histZonas: [_h(10), _h(50), _h(10)],
+      ).proponer('foto.jpg');
+
+      final superior = p.slots[PrendaCategoria.superior]!;
+      expect(superior.propuesta!.idPrenda, a.idPrenda);
+      expect(superior.similitudColor, isNull);
+      expect(superior.candidatas.last.idPrenda, b.idPrenda);
     });
   });
 

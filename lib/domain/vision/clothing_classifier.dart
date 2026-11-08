@@ -4,6 +4,7 @@ import 'dart:isolate';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:image/image.dart' as img;
 import 'package:tflite_flutter/tflite_flutter.dart';
+import 'package:weathwear/domain/vision/color_histograma.dart';
 
 class ClassificationResult {
   final String label;
@@ -19,6 +20,17 @@ typedef ZonaVertical = ({double desde, double hasta});
 
 // Tensor de entrada [1, 224, 224, 3]
 typedef _Tensor = List<List<List<List<double>>>>;
+
+// Lo que vuelve del isolate por cada zona
+typedef _ZonaPreparada = ({_Tensor tensor, List<double> hist});
+
+/// Resultado de una zona: tipo según el modelo + histograma de color de esa
+/// franja (para elegir cuál prenda de ese tipo es, ver ColorHistograma).
+class ZonaClasificada {
+  final ClassificationResult resultado;
+  final List<double> histograma;
+  const ZonaClasificada(this.resultado, this.histograma);
+}
 
 class ClassifierException implements Exception {
   final String message;
@@ -75,33 +87,40 @@ class ClothingClassifier {
     return _inferir(_preprocess(decoded));
   }
 
-  /// Clasifica varias franjas de una misma foto (RF-10: zona superior/inferior).
-  /// Decodificar y recortar una foto de cámara (12 MP) puede tardar cerca de un segundo, así que se
-  /// hace en otro isolate para no congelar la UI; la inferencia queda aquí
-  /// porque el Interpreter no se puede enviar entre isolates.
-  Future<List<ClassificationResult>> classifyZonas(
+  /// Clasifica varias franjas de una misma foto (RF-10: zona superior/inferior)
+  /// y calcula su histograma de color, aprovechando la misma decodificación.
+  /// Decodificar y recortar una foto de cámara (12 MP) puede tardar cerca de
+  /// un segundo, así que se hace en otro isolate para no congelar la UI; la
+  /// inferencia queda aquí porque el Interpreter no se puede enviar entre
+  /// isolates.
+  Future<List<ZonaClasificada>> classifyZonas(
     String imagePath,
     List<ZonaVertical> zonas,
   ) async {
     if (!isLoaded) {
       throw const ClassifierException('Llama a load() antes de clasificar');
     }
-    final tensores = await _prepararEnIsolate(imagePath, zonas);
-    if (tensores == null) {
+    final preparadas = await _prepararEnIsolate(imagePath, zonas);
+    if (preparadas == null) {
       throw ClassifierException(
         'Imagen invalida o formato no soportado: $imagePath',
       );
     }
-    return [for (final t in tensores) _inferir(t)];
+    return [
+      for (final z in preparadas) ZonaClasificada(_inferir(z.tensor), z.hist),
+    ];
   }
 
   // Estático: así el closure de Isolate.run no captura `this` (el Interpreter)
-  static Future<List<_Tensor>?> _prepararEnIsolate(
+  static Future<List<_ZonaPreparada>?> _prepararEnIsolate(
     String path,
     List<ZonaVertical> zonas,
   ) => Isolate.run(() => _prepararZonas(path, zonas));
 
-  static List<_Tensor>? _prepararZonas(String path, List<ZonaVertical> zonas) {
+  static List<_ZonaPreparada>? _prepararZonas(
+    String path,
+    List<ZonaVertical> zonas,
+  ) {
     final decoded = img.decodeImage(File(path).readAsBytesSync());
     if (decoded == null) return null;
     // El decoder no aplica la orientación EXIF: sin esto una foto vertical
@@ -112,18 +131,23 @@ class ClothingClassifier {
         ? img.copyResize(orientada, height: 800)
         : orientada;
 
-    return [
-      for (final z in zonas)
-        _preprocess(
-          img.copyCrop(
-            base,
-            x: 0,
-            y: (z.desde * base.height).round(),
-            width: base.width,
-            height: ((z.hasta - z.desde) * base.height).round(),
-          ),
-        ),
-    ];
+    final resultado = <_ZonaPreparada>[];
+    for (final z in zonas) {
+      final recorte = img.copyCrop(
+        base,
+        x: 0,
+        y: (z.desde * base.height).round(),
+        width: base.width,
+        height: ((z.hasta - z.desde) * base.height).round(),
+      );
+      resultado.add((
+        tensor: _preprocess(recorte),
+        // Color solo del centro: la persona suele ir al medio y los costados
+        // son fondo
+        hist: ColorHistograma.deImagen(recorte, margenX: 0.3, margenY: 0.1),
+      ));
+    }
+    return resultado;
   }
 
   ClassificationResult _inferir(_Tensor input) {

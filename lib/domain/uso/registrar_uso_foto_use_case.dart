@@ -6,6 +6,7 @@ import 'package:weathwear/domain/outfits/guardar_outfit_use_case.dart';
 import 'package:weathwear/domain/recommendation/prenda_categoria.dart';
 import 'package:weathwear/domain/uso/obtener_clima_foto_use_case.dart';
 import 'package:weathwear/domain/vision/clothing_classifier.dart';
+import 'package:weathwear/domain/vision/color_histograma.dart';
 
 /// Propuesta para una categoría del outfit (superior, inferior, entero, exterior).
 class SlotPropuesta {
@@ -20,11 +21,16 @@ class SlotPropuesta {
   /// null: el usuario debe elegir (o, en exterior, no lleva)
   final PrendaModel? propuesta;
 
+  /// Parecido de color entre la zona de la foto y la propuesta, en [0, 1].
+  /// null si no se pudo comparar (sin detección o sin foto de la prenda).
+  final double? similitudColor;
+
   const SlotPropuesta({
     required this.categoria,
     required this.deteccion,
     required this.candidatas,
     required this.propuesta,
+    this.similitudColor,
   });
 
   /// La UI resalta el slot cuando la propuesta no viene respaldada por el modelo.
@@ -82,15 +88,21 @@ class RegistrarUsoFotoUseCase {
   final PrendaRepository _prendaRepo;
   final OutfitRepository _outfitRepo;
   final Future<ClimaFoto> Function(String imagePath) _obtenerClima;
+  final Future<Map<String, List<double>>> Function(Iterable<String> paths)
+  _histogramasPrendas;
 
   RegistrarUsoFotoUseCase(
     this._classifier, {
     PrendaRepository? prendaRepo,
     OutfitRepository? outfitRepo,
     Future<ClimaFoto> Function(String imagePath)? obtenerClima,
+    // Inyectable en tests para no decodificar fotos reales
+    Future<Map<String, List<double>>> Function(Iterable<String> paths)?
+    histogramasPrendas,
   }) : _prendaRepo = prendaRepo ?? PrendaRepository(),
        _outfitRepo = outfitRepo ?? OutfitRepository(),
-       _obtenerClima = obtenerClima ?? ObtenerClimaFotoUseCase().call;
+       _obtenerClima = obtenerClima ?? ObtenerClimaFotoUseCase().call,
+       _histogramasPrendas = histogramasPrendas ?? ColorHistograma.deArchivos;
 
   Future<PropuestaUso> proponer(String imagePath) async {
     // El clima (red) corre en paralelo con la clasificación (CPU)
@@ -99,19 +111,30 @@ class RegistrarUsoFotoUseCase {
     // reporta como error no manejado. El error igual llega en el await de abajo.
     climaFuture.then((_) {}, onError: (_) {});
 
+    final prendas = await _prendaRepo.getAll();
+    final usos = await _outfitRepo.usosPorPrenda();
+    // Color de las fotos de tus prendas (cacheado tras la primera vez), en
+    // otro isolate mientras se clasifica la foto
+    final histPrendasFuture = _histogramasPrendas(
+      prendas.map((p) => p.imagenRuta),
+    );
+    histPrendasFuture.then((_) {}, onError: (_) {});
+
     if (!_classifier.isLoaded) await _classifier.load();
-    final detecciones = await _classifier.classifyZonas(imagePath, const [
+    final zonas = await _classifier.classifyZonas(imagePath, const [
       zonaSuperior,
       zonaInferior,
       zonaCuerpo,
     ]);
-    final prendas = await _prendaRepo.getAll();
-    final usos = await _outfitRepo.usosPorPrenda();
+    // Sin color no se cae la propuesta: se ordena solo por tipo y uso
+    final histPrendas = await histPrendasFuture.catchError(
+      (_) => <String, List<double>>{},
+    );
     final clima = await climaFuture;
 
-    final sup = detecciones[0];
-    final inf = detecciones[1];
-    final cuerpo = detecciones[2];
+    final sup = zonas[0].resultado;
+    final inf = zonas[1].resultado;
+    final cuerpo = zonas[2].resultado;
 
     // Cada zona solo aporta a las categorías que pueden estar ahí
     ClassificationResult? si(ClassificationResult d, PrendaCategoria c) =>
@@ -123,8 +146,16 @@ class RegistrarUsoFotoUseCase {
         si(sup, PrendaCategoria.exterior) ??
         si(cuerpo, PrendaCategoria.exterior);
 
+    // Zona cuyo color se compara con cada categoría
+    final histZona = {
+      PrendaCategoria.superior: zonas[0].histograma,
+      PrendaCategoria.exterior: zonas[0].histograma,
+      PrendaCategoria.inferior: zonas[1].histograma,
+      PrendaCategoria.entero: zonas[2].histograma,
+    };
+
     SlotPropuesta slot(PrendaCategoria c, ClassificationResult? det) =>
-        _armarSlot(c, det, prendas, usos);
+        _armarSlot(c, det, prendas, usos, histZona[c]!, histPrendas);
 
     return PropuestaUso(
       clima: clima,
@@ -176,22 +207,40 @@ class RegistrarUsoFotoUseCase {
     );
   }
 
-  // Candidatas: mismo tipo detectado primero, luego más usadas, luego más recientes.
-  // Superior/inferior/entero siempre proponen algo (la "más probable");
+  // Orden de candidatas: mismo tipo detectado, color más parecido a la zona,
+  // más usadas, más recientes. Superior/inferior/entero siempre proponen algo;
   // exterior solo si el modelo vio una chaqueta, porque es opcional.
   static SlotPropuesta _armarSlot(
     PrendaCategoria categoria,
     ClassificationResult? det,
     List<PrendaModel> prendas,
     Map<int, int> usos,
+    List<double> histZona,
+    Map<String, List<double>> histPrendas,
   ) {
     int rangoTipo(PrendaModel p) =>
         det != null && mismoTipo(p.tipo, det.label) ? 0 : 1;
+
+    // null: sin histograma de la prenda (foto borrada) o de la zona (tests)
+    double? color(PrendaModel p) {
+      final h = histPrendas[p.imagenRuta];
+      if (h == null || histZona.length != ColorHistograma.longitud) return null;
+      return ColorHistograma.similitud(histZona, h);
+    }
+
+    final similitudes = {
+      for (final p in prendas)
+        if (p.categoria == categoria) p.idPrenda: color(p),
+    };
 
     final candidatas = prendas.where((p) => p.categoria == categoria).toList()
       ..sort((a, b) {
         final porTipo = rangoTipo(a).compareTo(rangoTipo(b));
         if (porTipo != 0) return porTipo;
+        final porColor = (similitudes[b.idPrenda] ?? -1).compareTo(
+          similitudes[a.idPrenda] ?? -1,
+        );
+        if (porColor != 0) return porColor;
         final porUso = (usos[b.idPrenda] ?? 0).compareTo(usos[a.idPrenda] ?? 0);
         if (porUso != 0) return porUso;
         return (b.idPrenda ?? 0).compareTo(a.idPrenda ?? 0);
@@ -211,6 +260,10 @@ class RegistrarUsoFotoUseCase {
       deteccion: det,
       candidatas: candidatas,
       propuesta: propuesta,
+      // Solo tiene sentido si el modelo vio esa categoría en la zona
+      similitudColor: det == null || propuesta == null
+          ? null
+          : similitudes[propuesta.idPrenda],
     );
   }
 

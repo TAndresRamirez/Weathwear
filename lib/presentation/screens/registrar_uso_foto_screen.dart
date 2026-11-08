@@ -428,9 +428,11 @@ class _EstadoSlot extends StatelessWidget {
     if (opcional && slot.propuesta == null) {
       return Text('No detectada · toca una para agregarla', style: estilo);
     }
+    final color = slot.similitudColor;
     final texto = det == null
         ? 'No detectada en la foto: elige cuál usaste'
-        : 'Detectado: ${det.label} (${(det.confidence * 100).round()}%)';
+        : 'Detectado: ${det.label} (${(det.confidence * 100).round()}%)'
+              '${color == null ? '' : ' · color ${(color * 100).round()}% parecido'}';
 
     if (!slot.requiereConfirmacion) return Text(texto, style: estilo);
     return Row(

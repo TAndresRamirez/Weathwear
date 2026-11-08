@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:weathwear/data/models/clima_model.dart';
 import 'package:weathwear/data/models/outfit_guardado.dart';
 import 'package:weathwear/data/models/prenda_model.dart';
@@ -9,7 +8,6 @@ import 'package:weathwear/data/repositories/prenda_repository.dart';
 import 'package:weathwear/domain/outfits/outfit_filtro.dart';
 import 'package:weathwear/domain/outfits/usar_outfit_use_case.dart';
 import 'package:weathwear/domain/recommendation/recommendation_engine.dart';
-import 'package:weathwear/presentation/screens/crear_outfit_screen.dart';
 import 'package:weathwear/presentation/screens/editar_prenda_screen.dart';
 import 'package:weathwear/presentation/screens/registrar_prenda_screen.dart';
 import 'package:weathwear/presentation/screens/registrar_uso_foto_screen.dart';
@@ -96,22 +94,12 @@ class _PrendasScreenState extends State<PrendasScreen> {
     }
   }
 
-  // Abre el registro directo en cámara o galería; al volver, recarga siempre
-  Future<void> _abrirRegistro(ImageSource source) async {
+  // Abre el registro de prenda; ahí se elige cámara o galería. Al volver, recarga.
+  Future<void> _abrirRegistro() async {
     setState(() => _menuAbierto = false);
     await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (_) => RegistrarPrendaScreen(initialSource: source),
-      ),
+      MaterialPageRoute(builder: (_) => const RegistrarPrendaScreen()),
     );
-    if (mounted) _reload();
-  }
-
-  Future<void> _abrirCrearOutfit() async {
-    setState(() => _menuAbierto = false);
-    await Navigator.of(
-      context,
-    ).push<bool>(MaterialPageRoute(builder: (_) => const CrearOutfitScreen()));
     if (mounted) _reload();
   }
 
@@ -174,33 +162,19 @@ class _PrendasScreenState extends State<PrendasScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    // heroTag distinto por botón: evita conflicto entre FABs
+                    // Una acción por opción; la pantalla de registro pregunta cámara o galería
                     FloatingActionButton.extended(
-                      heroTag: 'fab_camara',
-                      onPressed: () => _abrirRegistro(ImageSource.camera),
-                      icon: const Icon(Icons.photo_camera_outlined),
-                      label: const Text('Cámara'),
-                    ),
-                    const SizedBox(height: 12),
-                    FloatingActionButton.extended(
-                      heroTag: 'fab_galeria',
-                      onPressed: () => _abrirRegistro(ImageSource.gallery),
-                      icon: const Icon(Icons.photo_library_outlined),
-                      label: const Text('Galería'),
-                    ),
-                    const SizedBox(height: 12),
-                    FloatingActionButton.extended(
-                      heroTag: 'fab_outfit',
-                      onPressed: _abrirCrearOutfit,
-                      icon: const Icon(Icons.dashboard_customize_outlined),
-                      label: const Text('Crear outfit'),
+                      heroTag: 'fab_prenda',
+                      onPressed: _abrirRegistro,
+                      icon: const Icon(Icons.checkroom_outlined),
+                      label: const Text('Nueva prenda'),
                     ),
                     const SizedBox(height: 12),
                     FloatingActionButton.extended(
                       heroTag: 'fab_uso_foto',
                       onPressed: _abrirUsoFoto,
                       icon: const Icon(Icons.add_a_photo_outlined),
-                      label: const Text('Uso desde foto'),
+                      label: const Text('Registrar uso'),
                     ),
                     const SizedBox(height: 12),
                   ],
@@ -253,7 +227,7 @@ class _PrendasScreenState extends State<PrendasScreen> {
                 ? _Vacio(
                     _outfits.isEmpty
                         ? 'Aún no tienes outfits. Guarda una recomendación '
-                              'desde Hoy o crea uno con "+".'
+                              'desde Hoy o registra un uso con "+".'
                         : 'Ningún outfit coincide con el filtro.',
                   )
                 : PagedGrid<OutfitGuardado>(
