@@ -20,6 +20,15 @@ class _FakeClimaApiClient implements ClimaApiClient {
     double longitude = 0,
   }) => onFetch();
 
+  // El pipeline no lo usa; existe solo para cumplir la interfaz
+  @override
+  Future<ClimaRawModels> fetchClimaHistorico({
+    required DateTime fechaHora,
+    double latitude = 0,
+    double longitude = 0,
+    DateTime? ahora,
+  }) => throw UnimplementedError();
+
   @override
   void dispose() {}
 }

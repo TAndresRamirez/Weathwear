@@ -36,4 +36,15 @@ class ClimaModel {
     sensacionTermica: (map['sensacion_termica'] as num?)?.toDouble(),
     vientoKmh: (map['viento_kmh'] as num?)?.toDouble(),
   );
+
+  /// Copia con el id asignado por la BD tras insertar.
+  ClimaModel withId(int id) => ClimaModel(
+    idClima: id,
+    fechaHora: fechaHora,
+    temperatura: temperatura,
+    humedad: humedad,
+    condicion: condicion,
+    sensacionTermica: sensacionTermica,
+    vientoKmh: vientoKmh,
+  );
 }
