@@ -40,7 +40,6 @@ class ClassifierException implements Exception {
 }
 
 // Clasificador de prendas basado en modelo TFLite (floating point)
-// Exportado desde Teachable Machine
 // Input: [1, 224, 224, 3] float32, normalizado a [-1,1]
 // Output: [1,N] float32 con probabilidades por clase (sofmax)
 

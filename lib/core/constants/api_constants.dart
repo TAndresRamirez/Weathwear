@@ -13,7 +13,6 @@ class ApiConstants {
   static const int diasPasadosForecast = 90;
 
   //Coordenadas fijas en Santiago, chile
-  //Despues pasara a geolocalizacion
   static const double defaultLatitude = -33.4489;
   static const double defaultLongitude = -70.6693;
 
