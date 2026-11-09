@@ -178,9 +178,12 @@ class RegistrarUsoFotoUseCase {
   /// Persiste lo que confirmó el usuario: reutiliza el outfit si ya existe
   /// con esas prendas exactas; si no, lo crea con origen "foto".
   /// El uso queda con la fecha de la foto, no con la de hoy.
+  /// Con [propuesta] se guarda si el usuario corrigió lo que propuso el modelo
+  /// (OutfitUso.corregido, indicador complementario del RF-09).
   Future<RegistroUsoResultado> registrar({
     required ClimaFoto clima,
     required List<PrendaModel> prendas,
+    PropuestaUso? propuesta,
   }) async {
     final ids = GuardarOutfitUseCase.validar(prendas); // OutfitException
     final idClima = clima.clima.idClima;
@@ -199,12 +202,37 @@ class RegistrarUsoFotoUseCase {
       idOutfit: idOutfit,
       idClima: idClima,
       fecha: clima.metadata.fechaHora,
+      corregido: propuesta == null ? null : fueCorregido(propuesta, prendas),
     );
     return RegistroUsoResultado(
       idOutfit,
       outfitNuevo: existente == null,
       usoRegistrado: registrado,
     );
+  }
+
+  /// true si lo confirmado difiere de lo propuesto: otra prenda en algún slot,
+  /// otro modo (entero vs. superior + inferior) o la capa exterior agregada o
+  /// quitada. Se compara como conjunto de ids, sin importar el orden.
+  static bool fueCorregido(
+    PropuestaUso propuesta,
+    Iterable<PrendaModel> confirmadas,
+  ) {
+    final categorias = propuesta.esEntero
+        ? const [PrendaCategoria.entero, PrendaCategoria.exterior]
+        : const [
+            PrendaCategoria.superior,
+            PrendaCategoria.inferior,
+            PrendaCategoria.exterior,
+          ];
+    final propuestas = {
+      for (final c in categorias) ?propuesta.slots[c]?.propuesta?.idPrenda,
+    };
+    final elegidas = {
+      for (final p in confirmadas) ?p.idPrenda,
+    };
+    return propuestas.length != elegidas.length ||
+        !propuestas.containsAll(elegidas);
   }
 
   // Orden de candidatas: mismo tipo detectado, color más parecido a la zona,

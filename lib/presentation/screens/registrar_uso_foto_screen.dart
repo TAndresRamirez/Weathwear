@@ -171,7 +171,11 @@ class _RegistrarUsoFotoScreenState extends State<RegistrarUsoFotoScreen> {
   Future<RegistroUsoResultado> _registrarReal(
     ClimaFoto clima,
     List<PrendaModel> prendas,
-  ) => _useCase!.registrar(clima: clima, prendas: prendas);
+  ) => _useCase!.registrar(
+    clima: clima,
+    prendas: prendas,
+    propuesta: _propuesta, // para OutfitUso.corregido
+  );
 
   void _snack(String mensaje) {
     if (!mounted) return;

@@ -15,6 +15,8 @@ import 'package:weathwear/presentation/widgets/recomendacion_panel.dart';
 import 'package:weathwear/data/models/outfit_guardado.dart';
 import 'package:weathwear/data/repositories/outfit_repository.dart';
 import 'package:weathwear/domain/outfits/guardar_outfit_use_case.dart';
+import 'package:weathwear/domain/outfits/usar_outfit_use_case.dart';
+import 'package:weathwear/domain/recommendation/outfit.dart';
 import 'package:weathwear/domain/settings/ajustes_controller.dart';
 import 'package:weathwear/data/models/ajustes.dart';
 
@@ -81,14 +83,13 @@ class _HomeScreenState extends State<HomeScreen> {
     curve: Curves.easeOut,
   );
 
-  Future<void> _guardarComoOutfit(RecomendacionResultado? r) async {
-    if (r == null) return;
+  Future<void> _guardarComoOutfit(Outfit outfit) async {
     // El messenger se captura antes del await (no usar context después)
     final messenger = ScaffoldMessenger.of(context);
     String mensaje;
     try {
       await GuardarOutfitUseCase(OutfitRepository())(
-        r.outfit.prendas,
+        outfit.prendas,
         origen: OutfitOrigen.recomendacion,
       );
       mensaje = 'Outfit guardado';
@@ -96,6 +97,26 @@ class _HomeScreenState extends State<HomeScreen> {
       mensaje = e.message; // p. ej. "Este outfit ya está guardado"
     } catch (_) {
       mensaje = 'No se pudo guardar el outfit';
+    }
+    messenger.showSnackBar(SnackBar(content: Text(mensaje)));
+  }
+
+  // Recomendación del historial: el outfit ya existe, se registra su uso de hoy
+  Future<void> _usarOutfit(int idOutfit) async {
+    final messenger = ScaffoldMessenger.of(context);
+    String mensaje;
+    try {
+      final registrado = await UsarOutfitUseCase(
+        OutfitRepository(),
+        _climaRepo,
+      )(idOutfit);
+      mensaje = registrado
+          ? 'Uso registrado'
+          : 'Ese outfit ya tenía un uso registrado hoy';
+    } on OutfitException catch (e) {
+      mensaje = e.message;
+    } catch (_) {
+      mensaje = 'No se pudo registrar el uso';
     }
     messenger.showSnackBar(SnackBar(content: Text(mensaje)));
   }
@@ -216,7 +237,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: RecomendacionPanel(
                       resultado: data!.recomendacion,
                       mensaje: data.mensajeReco,
-                      onGuardar: () => _guardarComoOutfit(data.recomendacion),
+                      onGuardar: _guardarComoOutfit,
+                      onUsar: _usarOutfit,
                     ),
                   ),
                 ),

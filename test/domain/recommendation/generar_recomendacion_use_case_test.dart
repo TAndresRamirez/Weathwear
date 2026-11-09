@@ -4,6 +4,7 @@ import 'package:weathwear/data/database/sqlite_helper.dart';
 import 'package:weathwear/data/models/clima_model.dart';
 import 'package:weathwear/data/models/prenda_model.dart';
 import 'package:weathwear/data/repositories/clima_repository.dart';
+import 'package:weathwear/data/repositories/outfit_repository.dart';
 import 'package:weathwear/data/repositories/prenda_repository.dart';
 import 'package:weathwear/data/repositories/recomendacion_repository.dart';
 import 'package:weathwear/domain/recommendation/generar_recomendacion_use_case.dart';
@@ -48,6 +49,7 @@ void main() {
         FOREIGN KEY (id_prenda) REFERENCES Prenda(id_prenda)
           ON DELETE RESTRICT ON UPDATE CASCADE)
     ''');
+    await SqliteHelper.crearTablasOutfit(db); // historial de usos (OutfitUso)
     SqliteHelper.setTestDatabase(db);
     climaRepo = ClimaRepository();
     prendaRepo = PrendaRepository();
@@ -102,6 +104,63 @@ void main() {
     final rows = await db.query('Recomendacion');
     expect(rows.length, 2);
     expect(rows.map((e) => e['fecha_generacion']).toSet().length, 1);
+  });
+
+  test('sin historial aplica el respaldo por rango y lo justifica', () async {
+    await seedPrendas();
+    await seedClima(ahora);
+
+    final r = await buildUseCase()();
+
+    expect(r.desdeHistorial, isFalse);
+    expect(r.alternativa, isNull);
+    expect(r.justificacion, contains('rango de temperatura'));
+  });
+
+  test('con un uso de clima similar recomienda ese outfit (historial)', () async {
+    await seedPrendas();
+    // Pantalón: fuera de rango a 25 °C, el respaldo nunca lo elegiría
+    final idPantalon = await prendaRepo.insert(
+      const PrendaModel(
+        tipo: 'Pantalon',
+        imagenRuta: '/tmp/Pantalon.jpg',
+        tempMin: 0,
+        tempMax: 15,
+        condicionAplicable: 'nublado',
+      ),
+    );
+    final idPolera = (await prendaRepo.getAll())
+        .firstWhere((p) => p.tipo == 'Polera')
+        .idPrenda!;
+    final outfitRepo = OutfitRepository();
+    final idOutfit = await outfitRepo.insert(idsPrenda: [idPolera, idPantalon]);
+    // Uso de ayer con un clima casi igual al actual (25 °C, 40 %, soleado)
+    final idClimaAyer = await climaRepo.insert(
+      ClimaModel(
+        fechaHora: ahora.subtract(const Duration(days: 1)),
+        temperatura: 24,
+        humedad: 45,
+        condicion: 'soleado',
+      ),
+    );
+    await outfitRepo.registrarUso(
+      idOutfit: idOutfit,
+      idClima: idClimaAyer,
+      fecha: ahora.subtract(const Duration(days: 1)),
+    );
+    await seedClima(ahora);
+
+    final r = await buildUseCase()();
+
+    expect(r.desdeHistorial, isTrue);
+    expect(r.historial!.idOutfit, idOutfit);
+    expect(r.outfit.inferior?.tipo, 'Pantalon');
+    expect(
+      r.justificacion,
+      'Utilizaste este conjunto 1 vez con un clima similar',
+    );
+    // También queda en Recomendacion (trazabilidad)
+    expect((await db.query('Recomendacion')).length, 2);
   });
 
   test('marca el clima como desactualizado si supera 3h', () async {

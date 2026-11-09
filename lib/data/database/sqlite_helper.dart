@@ -9,7 +9,7 @@ import 'package:sqflite/sqflite.dart';
 // Punto unico de acceso a la base de datos local del sistema
 class SqliteHelper {
   static const String _dbName = 'weathwear.db';
-  static const int dbVersion = 6; // v6: Corrige el tipo 'Chaquetas' que escribia la migracion v5 original
+  static const int dbVersion = 7; // v7: OutfitUso.corregido (indicador complementario del RF-09)
 
   //Singleton: una sola instancia de esta clase en toda la app
   SqliteHelper._internal();
@@ -157,6 +157,18 @@ class SqliteHelper {
         "UPDATE Prenda SET tipo = 'Chaqueta' WHERE tipo = 'Chaquetas'",
       );
     }
+    // v6 -> v7: indicador de corrección en los usos desde foto (RF-10)
+    if (oldVersion < 7) {
+      await _agregarColumnaCorregido(db);
+    }
+  }
+
+  // Idempotente: si la tabla se creó en esta misma migración (oldVersion < 4)
+  // ya trae la columna desde crearTablasOutfit, y un ADD COLUMN duplicado falla.
+  static Future<void> _agregarColumnaCorregido(Database db) async {
+    final columnas = await db.rawQuery('PRAGMA table_info(OutfitUso)');
+    if (columnas.any((c) => c['name'] == 'corregido')) return;
+    await db.execute('ALTER TABLE OutfitUso ADD COLUMN corregido INTEGER');
   }
 
   // v4: outfits guardados, su composición y el registro de usos.
@@ -190,6 +202,9 @@ class SqliteHelper {
         id_outfit INTEGER NOT NULL,
         id_clima  INTEGER NOT NULL,
         fecha_uso TEXT NOT NULL,
+        -- v7. NULL: uso manual ("Usar hoy"); 0: el usuario aceptó la propuesta
+        -- del modelo; 1: la corrigió (RF-10)
+        corregido INTEGER,
         FOREIGN KEY (id_outfit) REFERENCES Outfit(id_outfit)
           ON DELETE CASCADE,
         FOREIGN KEY (id_clima) REFERENCES Clima(id_clima)

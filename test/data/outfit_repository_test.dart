@@ -168,6 +168,75 @@ void main() {
       expect(await db.query('OutfitUso'), isEmpty);
     });
 
+    test('registrarUso guarda corregido solo cuando se indica', () async {
+      final a = await prenda('Polera');
+      final b = await prenda('Pantalon');
+      final id = await repo.insert(idsPrenda: [a.idPrenda!, b.idPrenda!]);
+      final dia1 = DateTime(2026, 11, 1, 9);
+      final dia2 = DateTime(2026, 11, 2, 9);
+      final dia3 = DateTime(2026, 11, 3, 9);
+
+      await repo.registrarUso(
+        idOutfit: id,
+        idClima: await clima(12, dia1),
+        fecha: dia1,
+      );
+      await repo.registrarUso(
+        idOutfit: id,
+        idClima: await clima(12, dia2),
+        fecha: dia2,
+        corregido: false,
+      );
+      await repo.registrarUso(
+        idOutfit: id,
+        idClima: await clima(12, dia3),
+        fecha: dia3,
+        corregido: true,
+      );
+
+      final filas = await db.query('OutfitUso', orderBy: 'fecha_uso');
+      expect(filas.map((f) => f['corregido']), [null, 0, 1]);
+    });
+
+    test('usosConClima: cada uso con su clima, más reciente primero, '
+        'sin outfits ocultos', () async {
+      final polera = await prenda('Polera');
+      final pantalon = await prenda('Pantalon');
+      final shorts = await prenda('Shorts');
+      final visible = await repo.insert(
+        idsPrenda: [polera.idPrenda!, pantalon.idPrenda!],
+      );
+      final oculto = await repo.insert(
+        idsPrenda: [polera.idPrenda!, shorts.idPrenda!],
+      );
+      final dia1 = DateTime(2026, 11, 1, 9);
+      final dia2 = DateTime(2026, 11, 2, 9);
+      await repo.registrarUso(
+        idOutfit: visible,
+        idClima: await clima(10, dia1),
+        fecha: dia1,
+      );
+      await repo.registrarUso(
+        idOutfit: visible,
+        idClima: await clima(14, dia2),
+        fecha: dia2,
+      );
+      await repo.registrarUso(
+        idOutfit: oculto,
+        idClima: await clima(25, dia2),
+        fecha: dia2,
+      );
+      await prendaRepo.desactivar(shorts.idPrenda!);
+
+      final usos = await repo.usosConClima();
+
+      expect(usos.map((u) => u.idOutfit), [visible, visible]);
+      expect(usos.map((u) => u.temperatura), [14, 10]);
+      expect(usos.first.humedad, 50);
+      expect(usos.first.condicion, 'soleado');
+      expect(usos.first.prendas.map((p) => p.tipo), ['Polera', 'Pantalon']);
+    });
+
     test('oculta el outfit si alguna de sus prendas fue desactivada', () async {
       final a = await prenda('Polera');
       final b = await prenda('Pantalon');
