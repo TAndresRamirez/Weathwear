@@ -25,6 +25,8 @@ void main() {
 
   // Mismos callbacks que producción. Las versiones 4-6 comparten el esquema
   // (v5 y v6 solo migran datos), así que onCreate sirve para sembrar una v4/v5.
+  // onCreate ya incluye OutfitUso.corregido (v7): esos casos prueban además que
+  // la migración v7 es idempotente.
   Future<Database> abrir(int version) => databaseFactory.openDatabase(
     path,
     options: OpenDatabaseOptions(
@@ -105,6 +107,56 @@ void main() {
 
     final fila = (await db.query('Prenda')).single;
     expect(fila['tipo'], 'Chaqueta');
+    await db.close();
+  });
+
+  test('v6 -> v7: agrega OutfitUso.corregido sin perder usos', () async {
+    // Esquema v6 real: OutfitUso sin la columna corregido
+    var db = await databaseFactory.openDatabase(
+      path,
+      options: OpenDatabaseOptions(
+        version: 6,
+        onConfigure: SqliteHelper.onConfigure,
+        onCreate: (db, _) async {
+          await SqliteHelper.onCreate(db, 6);
+          await db.execute('DROP TABLE OutfitUso');
+          await db.execute('''
+            CREATE TABLE OutfitUso (
+              id_uso INTEGER PRIMARY KEY AUTOINCREMENT,
+              id_outfit INTEGER NOT NULL, id_clima INTEGER NOT NULL,
+              fecha_uso TEXT NOT NULL)
+          ''');
+        },
+      ),
+    );
+    final polera = await prenda(db, 'Polera');
+    final pantalon = await prenda(db, 'Pantalon');
+    final idOutfit = await outfit(db, [polera, pantalon]);
+    final idClima = await db.insert('Clima', {
+      'fecha_hora': '2026-11-01T10:00:00',
+      'temperatura': 12,
+      'humedad': 60,
+      'condicion': 'nublado',
+    });
+    await db.insert('OutfitUso', {
+      'id_outfit': idOutfit,
+      'id_clima': idClima,
+      'fecha_uso': '2026-11-01T10:00:00',
+    });
+    await db.close();
+
+    db = await abrir(SqliteHelper.dbVersion);
+
+    final uso = (await db.query('OutfitUso')).single;
+    expect(uso.containsKey('corregido'), isTrue);
+    expect(uso['corregido'], isNull); // usos antiguos: sin dato
+    await db.close();
+  });
+
+  test('instalación nueva: OutfitUso trae corregido', () async {
+    final db = await abrir(SqliteHelper.dbVersion);
+    final columnas = await db.rawQuery('PRAGMA table_info(OutfitUso)');
+    expect(columnas.map((c) => c['name']), contains('corregido'));
     await db.close();
   });
 }

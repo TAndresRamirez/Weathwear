@@ -1,6 +1,7 @@
 import 'package:weathwear/data/database/sqlite_helper.dart';
 import 'package:weathwear/data/models/outfit_guardado.dart';
 import 'package:weathwear/data/models/prenda_model.dart';
+import 'package:weathwear/data/models/uso_historial.dart';
 
 class OutfitRepository {
   final SqliteHelper _dbHelper;
@@ -105,10 +106,12 @@ class OutfitRepository {
 
   /// Un uso por outfit y día (evita contar doble si se toca dos veces).
   /// Retorna false si hoy ya estaba registrado.
+  /// [corregido]: solo para usos desde foto (RF-10); null en "Usar hoy".
   Future<bool> registrarUso({
     required int idOutfit,
     required int idClima,
     DateTime? fecha,
+    bool? corregido,
   }) async {
     final db = await _dbHelper.database;
     final ts = (fecha ?? DateTime.now()).toIso8601String();
@@ -126,9 +129,39 @@ class OutfitRepository {
         'id_outfit': idOutfit,
         'id_clima': idClima,
         'fecha_uso': ts,
+        if (corregido != null) 'corregido': corregido ? 1 : 0,
       });
       return true;
     });
+  }
+
+  /// Historial para el motor (RF-05): cada uso con el clima de ese momento,
+  /// del más reciente al más antiguo. Solo outfits visibles (todas sus prendas
+  /// activas y composición válida), para no recomendar algo que ya no existe.
+  Future<List<UsoHistorial>> usosConClima() async {
+    final visibles = {for (final o in await getAll()) o.idOutfit: o};
+    if (visibles.isEmpty) return const [];
+
+    final db = await _dbHelper.database;
+    final rows = await db.rawQuery('''
+      SELECT u.id_outfit, u.fecha_uso, c.temperatura, c.humedad, c.condicion
+      FROM OutfitUso u
+      JOIN Clima c ON c.id_clima = u.id_clima
+      ORDER BY u.fecha_uso DESC, u.id_uso DESC
+    ''');
+
+    return [
+      for (final r in rows)
+        if (visibles[r['id_outfit'] as int] case final outfit?)
+          UsoHistorial(
+            idOutfit: outfit.idOutfit,
+            prendas: outfit.prendas,
+            fechaUso: DateTime.parse(r['fecha_uso'] as String),
+            temperatura: (r['temperatura'] as num).toDouble(),
+            humedad: (r['humedad'] as num).toDouble(),
+            condicion: r['condicion'] as String,
+          ),
+    ];
   }
 
   /// Veces que se usó cada prenda (id_prenda -> usos), contando los usos de

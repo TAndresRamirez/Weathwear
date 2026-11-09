@@ -338,6 +338,63 @@ void main() {
       expect(r.usoRegistrado, isFalse);
     });
 
+    test('con propuesta: guarda si el usuario la aceptó o la corrigió', () async {
+      final polera = await prenda('Polera');
+      final otraPolera = await prenda('Polera', ruta: '/tmp/Polera2.jpg');
+      final pantalon = await prenda('Pantalon');
+      final uc = crear([_r('Polera'), _r('Pantalon'), _r('Polera')]);
+      final propuesta = await uc.proponer('foto.jpg');
+      final propuestas = [
+        propuesta.slots[PrendaCategoria.superior]!.propuesta!,
+        propuesta.slots[PrendaCategoria.inferior]!.propuesta!,
+      ];
+      final otraSuperior = propuestas.first.idPrenda == polera.idPrenda
+          ? otraPolera
+          : polera;
+
+      // Acepta tal cual (orden distinto no es corrección)
+      expect(
+        RegistrarUsoFotoUseCase.fueCorregido(
+          propuesta,
+          propuestas.reversed,
+        ),
+        isFalse,
+      );
+      // Cambia la superior / agrega una chaqueta que no se propuso
+      expect(
+        RegistrarUsoFotoUseCase.fueCorregido(propuesta, [
+          otraSuperior,
+          pantalon,
+        ]),
+        isTrue,
+      );
+      final chaqueta = await prenda('Chaqueta');
+      expect(
+        RegistrarUsoFotoUseCase.fueCorregido(propuesta, [
+          ...propuestas,
+          chaqueta,
+        ]),
+        isTrue,
+      );
+
+      await uc.registrar(
+        clima: climaFoto,
+        prendas: [otraSuperior, pantalon],
+        propuesta: propuesta,
+      );
+      expect((await db.query('OutfitUso')).single['corregido'], 1);
+    });
+
+    test('sin propuesta: corregido queda NULL', () async {
+      final polera = await prenda('Polera');
+      final pantalon = await prenda('Pantalon');
+
+      await crear(const [])
+          .registrar(clima: climaFoto, prendas: [polera, pantalon]);
+
+      expect((await db.query('OutfitUso')).single['corregido'], isNull);
+    });
+
     test('composición inválida -> OutfitException', () async {
       final polera = await prenda('Polera');
       expect(
