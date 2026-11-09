@@ -93,7 +93,7 @@ class ConfiguracionDialog extends StatelessWidget {
                   valor: a.vistaInicial,
                   opciones: const {
                     VistaInicial.hoy1: 'Clima',
-                    VistaInicial.hoy2: 'Recomendación',
+                    VistaInicial.hoy2: 'Sugerencia',
                   },
                   onChanged: (v) => c.actualizar(a.copyWith(vistaInicial: v)),
                 ),
